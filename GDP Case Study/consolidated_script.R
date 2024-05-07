@@ -8,6 +8,7 @@ library(dplyr)
 library(tidyr)
 library(lubridate)
 library(ggplot2)
+library(lme4)
 
 ############################################################################################################################################
 # 1.process Oxford tracker daily indexes - input file "OxCGRT_compact_national_v1.csv"
@@ -58,6 +59,8 @@ tracker_data_Q_Diff <- rename(tracker_data_Q_Diff, period = quarters)
 #drop Date
 tracker_data_Q_Diff <- subset(tracker_data_Q_Diff, select = -Date)
 
+setwd("C:/Users/sacksferrari_s/OneDrive - OECD/Documents")
+
 ################################################################################
 # extract yearly data
 ################################################################################
@@ -96,6 +99,14 @@ tracker_data_Y_Diff <- rename(tracker_data_Y_Diff, period = years)
 
 # Drop Date
 tracker_data_Y_Diff <- subset(tracker_data_Y_Diff, select = -Date)
+
+## Add tracker data (not diff) to consolidated database
+# Rename variables to be consistent with df_QNA_growth
+tracker_data_Y <- rename(tracker_data_Y, country = CountryCode)
+tracker_data_Y <- rename(tracker_data_Y, period = years)
+
+# Drop Date
+tracker_data_Y <- subset(tracker_data_Y, select = -Date)
 
 
 ############################################################################################################################################
@@ -227,12 +238,12 @@ df_QNA_growth$subject <- ifelse(is.na(df_QNA_growth$SECTOR) & is.na(df_QNA_growt
                                               paste(df_QNA_growth$TRANSACTION, df_QNA_growth$SECTOR, df_QNA_growth$ACTIVITY, sep = "."))))
 
 
-df_QNA_growth <- subset(df_QNA_growth, select=c("country", "period", "subject","growth"))
+df_QNA_growth <- subset(df_QNA_growth, select=c("country", "period", "subject","OBS_VALUE", "growth"))
 
 df_QNA_growth_reshaped <- pivot_wider(data = df_QNA_growth, 
                                       id_cols = c("country", "period"), 
                                       names_from = subject, 
-                                      values_from = growth)
+                                      values_from = c(growth, OBS_VALUE))
 
 ###############################################################
 #Import annual data in volumes for GVA_Q and GVA_P
@@ -271,7 +282,7 @@ df_ANA_growth$subject <- ifelse(is.na(df_ANA_growth$SECTOR) & is.na(df_ANA_growt
                                               paste(df_ANA_growth$TRANSACTION, df_ANA_growth$SECTOR, df_ANA_growth$PRICE_BASE, sep = "."),
                                               paste(df_ANA_growth$TRANSACTION, df_ANA_growth$SECTOR, df_ANA_growth$ACTIVITY, df_ANA_growth$PRICE_BASE, sep = "."))))
 
-df_ANA_growth <- subset(df_ANA_growth, select=c("country", "period", "subject","growth"))
+df_ANA_growth <- subset(df_ANA_growth, select=c("country", "period", "subject","growth", "OBS_VALUE"))
 
 # Clean the data to remove rows with NA values
 df_ANA_growth <- na.omit(df_ANA_growth)
@@ -280,7 +291,7 @@ df_ANA_growth <- na.omit(df_ANA_growth)
 df_ANA_growth_reshaped <- pivot_wider(data = df_ANA_growth, 
                                       id_cols = c("country", "period"), 
                                       names_from = subject, 
-                                      values_from = growth)
+                                      values_from = c(growth, OBS_VALUE))
 
 
 ################################################################
@@ -298,14 +309,14 @@ combined_df_q <- merge(df_QNA_growth_reshaped,
                        all = TRUE)
 
 combined_df_a <- merge(df_ANA_growth_reshaped, 
-                       tracker_data_Y_Diff, 
+                       tracker_data_Y, 
                        df_ELS_Y, 
                        by.x = c("country", "period"),
                        by.y = c("country", "period"),
                        all = TRUE)
 
-combined_df_a$B1G.P.P<-combined_df_a$B1G.P.V-combined_df_a$B1G.P.L
-combined_df_a$B1G.Q.P<-combined_df_a$B1G.Q.V-combined_df_a$B1G.Q.L
+#combined_df_a$B1G.P.P<-combined_df_a$B1G.P.V-combined_df_a$B1G.P.L
+#combined_df_a$B1G.Q.P<-combined_df_a$B1G.Q.V-combined_df_a$B1G.Q.L
 
 
 # Add category for health and education method of estimation
@@ -353,17 +364,17 @@ combined_df_a <- combined_df_a %>%
 ####Clean for empty columns-rows and keep some variables only
 
 ##Annual data
-combined_df_a = remove_empty(combined_df_a, which=c("cols", "rows"))
+#combined_df_a = remove_empty(combined_df_a, which=c("cols", "rows"))
 
-combined_df_ss <- subset(combined_df_a, select=c("country", "period", "method_health", "B1G.P.L", "B1G.P.V", "B1G.Q.L", "B1G.Q.V", "B1G.L", "B1G.V", "B1G.Q.P", "B1G.P.P", "method_edu", "StringencyIndex_Average"))
+#combined_df_ss <- subset(combined_df_a, select=c("country", "period", "method_health", "B1G.P.L", "B1G.P.V", "B1G.Q.L", "B1G.Q.V", "B1G.L", "B1G.V", "B1G.Q.P", "B1G.P.P", "method_edu", "StringencyIndex_Average"))
 
-combined_df_ss <- drop_na(combined_df_ss)
+#combined_df_ss <- drop_na(combined_df_ss)
 
 ##Quarterly data
 
-combined_df_q_ss <- subset(combined_df_q, select=c("country", "period", "method_health", "B1GQ", "StringencyIndex_Average", "method_edu"))
+#combined_df_q_ss <- subset(combined_df_q, select=c("country", "period", "method_health", "B1GQ", "StringencyIndex_Average", "method_edu"))
 
-combined_df_q_ss <- drop_na(combined_df_q_ss)
+#combined_df_q_ss <- drop_na(combined_df_q_ss)
 
 
 ##########################################
@@ -419,7 +430,27 @@ ggplot(combined_df_ss, aes(x = period, y = B1G.P.P, color = factor(method_edu), 
 # Part IV: Regressions
 ###################################
 
-combined_df_a$share_gva = (combined_df_a$B1G.Q.V/combined_df_a$B1G.V)
+combined_df_a$share_gva = (combined_df_a$OBS_VALUE_B1G.Q.V*100/combined_df_a$OBS_VALUE_B1G.V)
 
 model = lm(log(B1G.Q.L) ~ factor(method_health) + log(StringencyIndex_Average), data = combined_df_ss)
 summary(model)
+
+
+####Trying out a fixed/random/mixed effects model
+
+library(zoo)
+library(sjPlot)
+library(sjmisc)
+
+## summary(gpa_mixed)
+
+model = lm(growth_B1G.Q.L ~ factor(method_health)*period, data = combined_df_a)
+summary(model)
+
+
+random_effects <- plm(growth_B1G.Q.V ~ as.factor(method_health),
+                    index = c("period"),
+                    data = combined_df_a, 
+                    model = "random")
+
+summary(random_effects)
