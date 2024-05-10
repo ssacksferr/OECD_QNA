@@ -503,3 +503,5 @@ ggplot(plot, aes(x = period, y = growth_B1G.Q.V)) +
   labs(x = "Period", y = "Growth B1G.V", title = "Boxplot of Growth B1G.V by Period and Method Health") +
   theme(legend.position = "bottom") +
   scale_fill_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"))  # Custom fill labels
+
+
