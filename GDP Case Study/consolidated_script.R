@@ -8,6 +8,11 @@ library(tidyr)
 library(lubridate)
 library(ggplot2)
 
+install.packages("officer")
+install.packages("flextable")
+library(officer)
+library(flextable)
+
 ############################################################################################################################################
 # 1.process Oxford tracker daily indexes - input file "OxCGRT_compact_national_v1.csv"
 ############################################################################################################################################
@@ -313,12 +318,13 @@ combined_df_a <- merge(df_ANA_growth_reshaped,
                        by.y = c("country", "period"),
                        all = TRUE)
 
-#combined_df_a$B1G.P.P<-combined_df_a$B1G.P.V-combined_df_a$B1G.P.L
-#combined_df_a$B1G.Q.P<-combined_df_a$B1G.Q.V-combined_df_a$B1G.Q.L
+#combined_df_a$growth_B1G.P.P<-combined_df_a$growth_B1G.P.V-combined_df_a$growth_B1G.P.L
+#combined_df_a$growth_B1G.Q.P<-combined_df_a$growth_B1G.Q.V-combined_df_a$growth_B1G.Q.L
 
 
 # Add category for health and education method of estimation
 
+#4 categories
 combined_df_q <- combined_df_q %>%
   mutate(method_health = case_when(
     country %in% c("AUS", "CHL", "COL", "CZE", "DNK", "POL", "KOR") ~ 1,
@@ -328,8 +334,19 @@ combined_df_q <- combined_df_q %>%
     TRUE ~ NA_integer_
   ))
 
+#2 categories
 combined_df_a <- combined_df_a %>%
   mutate(method_health = case_when(
+    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ 1,
+    country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ 2,
+    country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ 1,
+    country %in% c("AUS", "BEL", "DNK", "FIN", "FRA", "HUN", "ITA", "NLD", "NOR", "NZL", "PRT", "SVN", "SWE", "GBR") ~ 2,
+    TRUE ~ NA_integer_
+  ))
+
+# 4 categories
+combined_df_a <- combined_df_a %>%
+  mutate(method_health_4 = case_when(
     country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ 1,
     country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ 2,
     country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ 3,
@@ -341,14 +358,27 @@ combined_df_a <- combined_df_a %>%
 combined_df_q <- combined_df_q %>%
   mutate(method_edu = case_when(
     country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ 1,
+    country %in% c("") ~ 2,
     country %in% c("IRL", "LVA", "ESP") ~ 3,
     country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "MEX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ 4,
     TRUE ~ NA_integer_
   ))
 
+#2 categories
 combined_df_a <- combined_df_a %>%
   mutate(method_edu = case_when(
     country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ 1,
+    country %in% c("") ~ 2,
+    country %in% c("IRL", "LVA", "ESP") ~ 1,
+    country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "MEX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ 2,
+    TRUE ~ NA_integer_
+  ))
+
+#3 categories
+combined_df_a <- combined_df_a %>%
+  mutate(method_edu_3 = case_when(
+    country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ 1,
+    country %in% c("") ~ 2,
     country %in% c("IRL", "LVA", "ESP") ~ 3,
     country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "MEX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ 4,
     TRUE ~ NA_integer_
@@ -364,7 +394,7 @@ combined_df_a <- combined_df_a %>%
 ##Annual data
 #combined_df_a = remove_empty(combined_df_a, which=c("cols", "rows"))
 
-#combined_df_ss <- subset(combined_df_a, select=c("country", "period", "method_health", "B1G.P.L", "B1G.P.V", "B1G.Q.L", "B1G.Q.V", "B1G.L", "B1G.V", "B1G.Q.P", "B1G.P.P", "method_edu", "StringencyIndex_Average"))
+#combined_df_ss <- subset(combined_df_a, select=c("country", "period", "method_health", "growth_B1G.P.L", "growth_B1G.P.V", "growth_B1G.Q.L", "growth_B1G.Q.V", "growth_B1G.L", "growth_B1G.V", "growth_B1G.Q.P", "growth_B1G.P.P", "method_edu", "method_health_4", "method_edu_3"))
 
 #combined_df_ss <- drop_na(combined_df_ss)
 
@@ -380,22 +410,37 @@ combined_df_a <- combined_df_a %>%
 ##########################################
 
 #First, stringency vs B1GQ separated by health and period
-ggplot(combined_df_q_ss, aes(x = StringencyIndex_Average, y = B1GQ, color = factor(res.km$cluster))) +
-  geom_point() +
-  geom_text(aes(label = country), vjust = -0.5, size=2) +
-  facet_grid(method_health ~ period) +
-  ggtitle("Stringency of COVID over B1GQ")
-
 #Same but adding trend line / plot all groups in one pane
-ggplot(combined_df_ss, aes(x = period, y = B1G.Q.L, color = factor(method_health))) +
+plot2 <- ggplot(combined_df_ss, aes(x = period, y = growth_B1G.Q.L, color = factor(method_health_4))) +
   geom_point(alpha = 0.5) +
   geom_text(aes(label = country), vjust = -0.5, size=2) +
-  geom_smooth(method = "lm", se = FALSE) +  # Add linear regression lines
   ggtitle("GVA for Health Sector and Year") +
   scale_color_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"))  # Add custom labels
 
+plot3 <-ggplot(data = combined_df_ss %>% filter(!is.na(growth_B1G.P.L)), 
+       aes(x = period, y = growth_B1G.P.L, color = factor(method_edu))) +
+  geom_point(alpha = 0.5) +
+  geom_text(aes(label = country), vjust = -0.5, size = 2) +
+  ggtitle("GVA for Education Sector and Year") +
+  scale_color_discrete(name = "Estimation method", labels = c("Indirect", "Direct"))  #
+
+plot4 <- ggplot(data = combined_df_ss %>% filter(!is.na(method_edu)), 
+                aes(x = period, y = growth_B1G.P.L, color = factor(method_edu_3))) +
+  geom_point(alpha = 0.5) +
+  geom_text(aes(label = country), vjust = -0.5, size = 2) +
+  ggtitle("GVA for Education Sector and Year") +
+  scale_color_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-direct"))  # Add custom labels
+
+
+plot5 <- ggplot(combined_df_ss, aes(x = period, y = growth_B1G.Q.L, color = factor(method_health))) +
+  geom_point(alpha = 0.5) +
+  geom_text(aes(label = country), vjust = -0.5, size=2) +
+  ggtitle("GVA for Health Sector and Year") +
+  scale_color_discrete(name = "Estimation method", labels = c("Indirect", "Direct"))  # Add custom labels
+
+
 #Same but adding trend line / plot all groups in one pane
-ggplot(combined_df_ss, aes(x = period, y = B1G.Q.L, color = factor(method_health))) +
+ggplot(combined_df_ss, aes(x = period, y = growth_B1G.Q.L, color = factor(method_health))) +
   geom_point(alpha = 0.5) +
   geom_text(aes(label = country), vjust = -0.5, size=2) +
   geom_smooth(method = "lm", se = FALSE) +  # Add linear regression lines
@@ -406,18 +451,18 @@ ggplot(combined_df_ss, aes(x = period, y = B1G.Q.L, color = factor(method_health
 #RD - with prices
 
 #Health
-ggplot(combined_df_ss, aes(x = period, y = B1G.Q.P, color = factor(method_health), group = factor(method_health))) +
-  geom_point(alpha = 0.5) +
-  geom_text(aes(label = country), vjust = -0.5, size=2) +
-  ggtitle("GVA.Q (implicit prices) and Year by Health Est. Methods") +
-  scale_color_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"))  # Custom color labels
+#ggplot(combined_df_ss, aes(x = period, y = growth_B1G.Q.P, color = factor(method_health), group = factor(method_health))) +
+#  geom_point(alpha = 0.5) +
+#  geom_text(aes(label = country), vjust = -0.5, size=2) +
+#  ggtitle("GVA.Q (implicit prices) and Year by Health Est. Methods") +
+#  scale_color_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"))  # Custom color labels
 
 #Education
-ggplot(combined_df_ss, aes(x = period, y = B1G.P.P, color = factor(method_edu), group = factor(method_edu))) +
-  geom_point(alpha = 0.5) +
-  geom_text(aes(label = country), vjust = -0.5, size=2) +
-  ggtitle("GVA.P (implcit prices) and Year by Education Est. Methods") +
-  scale_color_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"))  # Custom color labels
+#ggplot(combined_df_ss, aes(x = period, y = B1G.P.P, color = factor(method_edu), group = factor(method_edu))) +
+#  geom_point(alpha = 0.5) +
+#  geom_text(aes(label = country), vjust = -0.5, size=2) +
+#  ggtitle("GVA.P (implcit prices) and Year by Education Est. Methods") +
+#  scale_color_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"))  # Custom color labels
 
 
 
@@ -428,80 +473,94 @@ ggplot(combined_df_ss, aes(x = period, y = B1G.P.P, color = factor(method_edu), 
 # Part IV: Regressions
 ###################################
 
-combined_df_a$share_gva = (combined_df_a$OBS_VALUE_B1G.Q.V*100/combined_df_a$OBS_VALUE_B1G.V)
-
-model = lm(log(B1G.Q.L) ~ factor(method_health) + log(StringencyIndex_Average), data = combined_df_ss)
-summary(model)
-
-
-####Trying out a fixed/random/mixed effects model
-
 library(zoo)
 library(sjPlot)
 library(sjmisc)
 
-## summary(gpa_mixed)
+combined_df_a$share_gva = (combined_df_a$OBS_VALUE_B1G.Q.V*100/combined_df_a$OBS_VALUE_B1G.V)
 
-model = lm(growth_B1G.Q.L ~ factor(method_health)*period, data = combined_df_a)
+model = lm(growth_B1G.Q.L ~ factor(method_health) +  factor(period), data = combined_df_a)
 summary(model)
 
+coefficients <- coef(summary(model))
+coefficients <- as.data.frame(coefficients)
 
-random_effects <- plm(growth_B1G.Q.V ~ as.factor(method_health),
-                    index = c("period"),
-                    data = combined_df_a, 
-                    model = "random")
+# Add row names to the data frame
+coefficients$row_names <- rownames(coefficients)
 
-summary(random_effects)
+coefficients <- coefficients %>% select(row_names, everything())
+
+
+# Create a flextable from regression results
+flex_table <- flextable(coefficients)
+
+plot1 = plot_model(model)
+
+
+####Trying out a fixed/random/mixed effects model
+
+## summary(gpa_mixed)
+
+#model = lm(growth_B1G.Q.L ~ factor(method_health)*period, data = combined_df_a)
+#summary(model)
+
+
+
+
+#random_effects <- plm(growth_B1G.Q.V ~ as.factor(method_health),
+#                    index = c("period"),
+#                    data = combined_df_a, 
+#                    model = "random")
+
+#summary(random_effects)
+
 
 
 ######### FIGURES
 
-combined_df_a$period <- as.numeric(combined_df_a$period)
+combined_df_a$period <- as.factor(combined_df_a$period)
 
-library(ggplot2)
-
-plot = subset(combined_df_a, select = c("country", "period", "growth_B1G.L", "growth_B1G.V", "growth_B1G.Q.L", "growth_B1G.Q.V", "method_health", "method_edu"))
+plot = subset(combined_df_a, select = c("country", "period", "growth_B1G.L", "growth_B1G.V", "growth_B1G.Q.L", "growth_B1G.Q.V", "growth_B1G.P.L", "growth_B1G.P.V",  "method_health", "method_edu", "method_health_4", "method_edu_3"))
 plot$method_health = as.factor(plot$method_health)
+plot$period = as.factor(plot$period)
 plot = drop_na(plot)
 # Assuming 'method_health' is a column in your dataset combined_df_a
 
 # Replace 'method_health' with the actual column name if different
-plot$period <- factor(plot$period)
+plot$period <- as.factor(plot$period)
 
 # Plot the boxplot with 'period' as x-axis
-ggplot(plot, aes(x = period, y = growth_B1G.V)) +
-  geom_boxplot(aes(fill = method_health, color = method_health), alpha = 0.3, position = position_dodge(width = 0)) +
-  scale_color_identity() +
+# Define color palette
+color_palette <- c("1" = "#66C2A5", "2" = "#FC8D62", "3" = "#8DA0CB", "4" = "#E78AC3")
+
+# Plot for method_health
+plot6 <- ggplot(plot, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health_4))) +
+  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
   theme_minimal() +
-  labs(x = "Period", y = "Growth B1G.V", title = "Boxplot of Growth B1G.V by Period and Method Health") +
+  labs(x = "Period", y = "Growth B1G.Q.L", title = "Boxplot of Growth B1G.V by Period and Method Health") +
   theme(legend.position = "bottom") +
-  scale_color_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"), guide = "none")  # Custom color labels
+  scale_fill_manual(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"), values = color_palette)
 
 
-ggplot(plot, aes(x = period, y = growth_B1G.Q.V)) +
-  geom_boxplot(aes(fill = method_health, color = method_health), alpha = 0.3, position = position_dodge(width = 0)) +
-  scale_color_identity() +
+plot7 <- ggplot(plot, aes(x = period, y = growth_B1G.P.L, fill = factor(method_edu_3))) +
+  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
   theme_minimal() +
-  labs(x = "Period", y = "Growth B1G.V", title = "Boxplot of Growth B1G.V by Period and Method Health") +
+  labs(x = "Period", y = "Growth B1G.P.L", title = "Boxplot of Growth B1G.P.L by Period and Method Education") +
   theme(legend.position = "bottom") +
-  scale_color_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"), guide = "none")  # Custom color labels
+  scale_fill_manual(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-direct"), values = color_palette)
 
-ggplot(plot, aes(x = period, y = growth_B1G.Q.V)) +
-  geom_boxplot(aes(fill = method_health, color = method_health), alpha = 0.3, position = position_dodge(width = 0.2)) +
-  scale_color_manual(values = c("Input - indirect" = "black", "Input - direct" = "black", "Output-indirect" = "black", "Output-direct" = "black")) +
-  scale_fill_manual(values = c("Input - indirect" = "grey", "Input - direct" = "grey", "Output-indirect" = "grey", "Output-direct" = "grey")) +
+
+plot8 <- ggplot(plot, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health))) +
+  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
   theme_minimal() +
-  labs(x = "Period", y = "Growth B1G.V", title = "Boxplot of Growth B1G.V by Period and Method Health") +
+  labs(x = "Period", y = "Growth B1G.Q.L", title = "Boxplot of Growth B1G.Q by Period and Method Health") +
   theme(legend.position = "bottom") +
-  scale_fill_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"))  # Custom fill labels
+  scale_fill_manual(name = "Estimation method", labels = c("Indirect (deflation)", "Direct (indicators)"), values = color_palette)
 
-ggplot(plot, aes(x = period, y = growth_B1G.Q.V)) +
-  geom_boxplot(aes(fill = method_health, color = method_health), alpha = 0.3, position = position_dodge(width = 0.2)) +
-  scale_color_manual(values = c("Input - indirect" = "black", "Input - direct" = "black", "Output-indirect" = "black", "Output-direct" = "black")) +
-  scale_fill_manual(values = c("Input - indirect" = "grey", "Input - direct" = "grey", "Output-indirect" = "grey", "Output-direct" = "grey")) +
+
+plot9 <- ggplot(plot, aes(x = period, y = growth_B1G.P.L, fill = factor(method_edu))) +
+  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
   theme_minimal() +
-  labs(x = "Period", y = "Growth B1G.V", title = "Boxplot of Growth B1G.V by Period and Method Health") +
+  labs(x = "Period", y = "Growth B1G.P.L", title = "Boxplot of Growth B1G.P by Period and Method Education") +
   theme(legend.position = "bottom") +
-  scale_fill_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"))  # Custom fill labels
-
-
+  scale_fill_manual(name = "Estimation method", labels = c("Indirect (deflation)", "Direct (indicators)"), values = color_palette)
