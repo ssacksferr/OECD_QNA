@@ -13,6 +13,10 @@ install.packages("flextable")
 install.packages("sjPlot")
 library(officer)
 library(flextable)
+library(zoo)
+library(sjPlot)
+library(sjmisc)
+
 
 ############################################################################################################################################
 # 1.process Oxford tracker daily indexes - input file "OxCGRT_compact_national_v1.csv"
@@ -62,8 +66,6 @@ tracker_data_Q_Diff <- rename(tracker_data_Q_Diff, period = quarters)
 
 #drop Date
 tracker_data_Q_Diff <- subset(tracker_data_Q_Diff, select = -Date)
-
-setwd("C:/Users/Dkhissi_r/OneDrive - OECD")
 
 ################################################################################
 # extract yearly data
@@ -319,8 +321,8 @@ combined_df_a <- merge(df_ANA_growth_reshaped,
                        by.y = c("country", "period"),
                        all = TRUE)
 
-#combined_df_a$growth_B1G.P.P<-combined_df_a$growth_B1G.P.V-combined_df_a$growth_B1G.P.L
-#combined_df_a$growth_B1G.Q.P<-combined_df_a$growth_B1G.Q.V-combined_df_a$growth_B1G.Q.L
+combined_df_a$growth_B1G.P.P<-combined_df_a$growth_B1G.P.V-combined_df_a$growth_B1G.P.L
+combined_df_a$growth_B1G.Q.P<-combined_df_a$growth_B1G.Q.V-combined_df_a$growth_B1G.Q.L
 
 
 # Add category for health and education method of estimation
@@ -338,21 +340,21 @@ combined_df_q <- combined_df_q %>%
 #2 categories
 combined_df_a <- combined_df_a %>%
   mutate(method_health = case_when(
-    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ 1,
-    country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ 2,
-    country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ 1,
-    country %in% c("AUS", "BEL", "DNK", "FIN", "FRA", "HUN", "ITA", "NLD", "NOR", "NZL", "PRT", "SVN", "SWE", "GBR") ~ 2,
-    TRUE ~ NA_integer_
+    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ "Deflation_Input",
+    country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ "Indicator_Input",
+    country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ "Deflation_Output",
+    country %in% c("AUS", "BEL", "DNK", "FIN", "FRA", "HUN", "ITA", "NLD", "NOR", "NZL", "PRT", "SVN", "SWE", "GBR") ~ "Indicator_Output",
+    TRUE ~ NA_character_
   ))
 
 # 4 categories
 combined_df_a <- combined_df_a %>%
-  mutate(method_health_4 = case_when(
-    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ 1,
-    country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ 2,
-    country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ 3,
-    country %in% c("AUS", "BEL", "DNK", "FIN", "FRA", "HUN", "ITA", "NLD", "NOR", "NZL", "PRT", "SVN", "SWE", "GBR") ~ 4,
-    TRUE ~ NA_integer_
+  mutate(method_health_2 = case_when(
+    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ "Deflation",
+    country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ "Indicator",
+    country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ "Deflation",
+    country %in% c("AUS", "BEL", "DNK", "FIN", "FRA", "HUN", "ITA", "NLD", "NOR", "NZL", "PRT", "SVN", "SWE", "GBR") ~ "Indicator",
+    TRUE ~ NA_character_
   ))
 
 
@@ -395,9 +397,9 @@ combined_df_a <- combined_df_a %>%
 ##Annual data
 #combined_df_a = remove_empty(combined_df_a, which=c("cols", "rows"))
 
-#combined_df_ss <- subset(combined_df_a, select=c("country", "period", "method_health", "growth_B1G.P.L", "growth_B1G.P.V", "growth_B1G.Q.L", "growth_B1G.Q.V", "growth_B1G.L", "growth_B1G.V", "growth_B1G.Q.P", "growth_B1G.P.P", "method_edu", "method_health_4", "method_edu_3"))
+combined_df_ss <- subset(combined_df_a, select=c("country", "period", "method_health", "growth_B1G.P.L", "growth_B1G.P.V", "growth_B1G.Q.L", "growth_B1G.Q.V", "growth_B1G.L", "growth_B1G.V", "growth_B1G.Q.P", "growth_B1G.P.P", "method_edu", "method_health_2", "method_edu_3"))
 
-#combined_df_ss <- drop_na(combined_df_ss)
+combined_df_ss <- drop_na(combined_df_ss)
 
 ##Quarterly data
 
@@ -406,17 +408,39 @@ combined_df_a <- combined_df_a %>%
 #combined_df_q_ss <- drop_na(combined_df_q_ss)
 
 
+
 ##########################################
 #Part 3: Different visualizations
 ##########################################
 
 # #First, stringency vs B1GQ separated by health and period
 # #Same but adding trend line / plot all groups in one pane
-# plot2 <- ggplot(combined_df_ss, aes(x = period, y = growth_B1G.Q.L, color = factor(method_health_4))) +
-#   geom_point(alpha = 0.5) +
+#plot2 <- ggplot(combined_df_ss, aes(x = period, y = growth_B1G.Q.L, color = factor(method_health_4))) +
+#  geom_point(alpha = 0.5) +
 #   geom_text(aes(label = country), vjust = -0.5, size=2) +
 #   ggtitle("GVA for Health Sector and Year") +
 #   scale_color_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"))  # Add custom labels
+
+plot2 <- ggplot(combined_df_ss, aes(x = period, y = growth_B1G.Q.L, color = factor(method_health_2))) +
+  geom_point(alpha = 0.5) +
+  geom_text(aes(label = country), vjust = -0.5, size=6) +
+  ggtitle("GVA for Health Sector and Year") +
+  scale_color_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct")) 
+
+# Convert ggplot to plotly
+plotly_plot <- ggplotly(plot2)
+
+# Display the plotly plot
+plotly_plot
+
+
+#plot2 <- ggplot(combined_df_a, aes(x = period, y = growth_B1G.Q.L, color = factor(method_health_4))) +
+#  geom_point(alpha = 0.5) +
+#  geom_text(aes(label = country), vjust = -0.5, size=2) +
+#  ggtitle("GVA for Health Sector and Year") +
+#  scale_color_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct"))  # Add custom labels
+
+
 # 
 # plot3 <-ggplot(data = combined_df_ss %>% filter(!is.na(growth_B1G.P.L)), 
 #        aes(x = period, y = growth_B1G.P.L, color = factor(method_edu))) +
@@ -472,14 +496,30 @@ combined_df_a <- combined_df_a %>%
 # Part IV: Regressions
 ###################################
 
-library(zoo)
-library(sjPlot)
-library(sjmisc)
 
-combined_df_a$share_gva = (combined_df_a$OBS_VALUE_B1G.Q.V*100/combined_df_a$OBS_VALUE_B1G.V)
+#combined_df_a$method_health_relevel <- relevel(combined_df_a$method_health,"Indicators")
+
+#combined_df_a$period_relevel <- relevel(combined_df_a$period,"2020")
+
+#combined_df_a$share_gva = (combined_df_a$OBS_VALUE_B1G.Q.V*100/combined_df_a$OBS_VALUE_B1G.V)
 
 model = lm(growth_B1G.Q.L ~ factor(method_health) +  factor(period), data = combined_df_a)
 summary(model)
+
+boxplot(model)
+
+
+#model = lm(growth_B1G.Q.L ~ factor(method_health) +  period_relevel, data = combined_df_a)
+#summary(model)
+
+#plot(model)
+
+ggplot(data = model_4, aes(x = model_4$residuals)) +
+  geom_histogram(fill = 'steelblue', color = 'black') +
+  labs(title = 'Histogram of Residuals', x = 'Residuals', y = 'Frequency')
+
+#model_1 = lm(growth_B1G.Q.L ~ method_health_relevel +  factor(period) - 1, data = combined_df_a)
+#summary(model_1)
 
 coefficients <- coef(summary(model))
 coefficients <- as.data.frame(coefficients)
@@ -493,7 +533,8 @@ coefficients <- coefficients %>% select(row_names, everything())
 # Create a flextable from regression results
 flex_table <- flextable(coefficients)
 
-plot1 = plot_model(model)
+plot1 = plot_model(model_1)
+print(plot1)
 
 
 ####Trying out a fixed/random/mixed effects model
@@ -519,7 +560,7 @@ plot1 = plot_model(model)
 
 combined_df_a$period <- as.factor(combined_df_a$period)
 
-plot = subset(combined_df_a, select = c("country", "period", "growth_B1G.L", "growth_B1G.V", "growth_B1G.Q.L", "growth_B1G.Q.V", "growth_B1G.P.L", "growth_B1G.P.V",  "method_health", "method_edu", "method_health_4", "method_edu_3"))
+plot = subset(combined_df_a, select = c("country", "period", "growth_B1G.L", "growth_B1G.V", "growth_B1G.Q.L", "growth_B1G.Q.V", "growth_B1G.P.L", "growth_B1G.P.V",  "method_health", "method_edu", "method_health_2", "method_edu_3"))
 plot$method_health = as.factor(plot$method_health)
 plot$period = as.factor(plot$period)
 plot = drop_na(plot)
@@ -533,14 +574,12 @@ plot$period <- as.factor(plot$period)
 color_palette <- c("1" = "#66C2A5", "2" = "#FC8D62", "3" = "#8DA0CB", "4" = "#E78AC3")
 
 
-plot6 <- ggplot(plot, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health_4))) +
+plot6 <- ggplot(plot, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health))) +
   geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
   theme_minimal() +
   labs(x = "Period", y = "Growth GVA Health", title = "Boxplot of real growth of GVA Health  by Period and Method Health") +
   theme(legend.position = "bottom") +
   scale_fill_manual(name = "Estimation method", labels = c("Deflation input prices", "Input indicators", "Deflation output prices", "Output indicators"), values = color_palette)
-
-
 
 plot7 <- ggplot(plot, aes(x = period, y = growth_B1G.P.L, fill = factor(method_edu_3))) +
   geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
@@ -550,7 +589,7 @@ plot7 <- ggplot(plot, aes(x = period, y = growth_B1G.P.L, fill = factor(method_e
   scale_fill_manual(name = "Estimation method", labels = c("Deflation input prices", "Input indicators", "Output indicators"), values = color_palette)
 
 
-plot8 <- ggplot(plot, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health))) +
+plot8 <- ggplot(plot, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health_2))) +
   geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
   theme_minimal() +
   labs(x = "Period", y = "Growth GVA Health", title = "Boxplot of real growth of GVA Health by Period and Method Health") +
@@ -564,3 +603,127 @@ plot9 <- ggplot(plot, aes(x = period, y = growth_B1G.P.L, fill = factor(method_e
   labs(x = "Period", y = "Growth GVA Education", title = "Boxplot of real growth of GVA Education by Period and Method Education") +
   theme(legend.position = "bottom") +
   scale_fill_manual(name = "Estimation method", labels = c("Indirect (deflation)", "Direct (indicators)"), values = color_palette)
+
+############
+#model eval
+############
+
+bartlett.test()
+
+bartlett.test(growth_B1G.Q.L ~ factor(method_health), data = plot)
+
+bartlett.test(growth_B1G.L ~ factor(method_health), data = combined_df_a)
+
+
+# library
+library(multcompView)
+
+
+# What is the effect of the treatment on the value ?
+model_1 = lm(growth_B1G.Q.L ~  factor(period)*method_health, data = plot)
+summary(model_1)
+
+coefficients <- coef(summary(model_1))
+coefficients <- as.data.frame(coefficients)
+
+# Add row names to the data frame
+coefficients$row_names <- rownames(coefficients)
+
+coefficients <- coefficients %>% select(row_names, everything())
+# Create a flextable from regression results
+flex_table1 <- flextable(coefficients)
+
+
+
+model_2 = lm(growth_B1G.P.L ~  factor(period)*factor(method_edu), data = plot)
+summary(model_2)
+coefficients2 <- coef(summary(model_2))
+coefficients2 <- as.data.frame(coefficients2)
+
+# Add row names to the data frame
+coefficients2$row_names <- rownames(coefficients2)
+
+coefficients2 <- coefficients2 %>% select(row_names, everything())
+# Create a flextable from regression results
+flex_table2 <- flextable(coefficients2)
+
+model_3 = lm(growth_B1G.L ~  factor(period)*factor(method_health), data = plot)
+summary(model_3)
+
+coefficients3 <- coef(summary(model_3))
+coefficients3 <- as.data.frame(coefficients3)
+
+
+
+# Add row names to the data frame
+coefficients3$row_names <- rownames(coefficients3)
+
+coefficients3 <- coefficients3 %>% select(row_names, everything())
+# Create a flextable from regression results
+flex_table3 <- flextable(coefficients3)
+
+
+model_4 = lm(growth_B1G.Q.L ~  factor(period)*factor(method_health_2), data = combined_df_ss)
+summary(model_4)
+
+
+coefficients4 <- coef(summary(model_4))
+coefficients4 <- as.data.frame(coefficients4)
+
+
+# Add row names to the data frame
+coefficients4$row_names <- rownames(coefficients4)
+
+coefficients4 <- coefficients4 %>% select(row_names, everything())
+# Create a flextable from regression results
+flex_table4 <- flextable(coefficients4)
+
+coefficients_tidy <- tidy(model_1)
+
+# Print coefficients with category names
+print(coefficients_tidy)
+ANOVA=aov(model_4)
+
+summary(ANOVA)
+
+TukeyHSD(ANOVA, conf.level=.95)
+
+
+plot(TukeyHSD(ANOVA, conf.level=.95), las=2)
+
+#
+##########################################
+# Export results to .docx
+##########################################
+
+ggsave("plot1.png", plot1)
+ggsave("plot2.png", plot2)
+
+# Create a new Word document
+doc <- read_docx()
+
+# Add ggplots as images to the Word document
+doc <- doc %>%
+  body_add_img("plot1.png") %>%
+  body_add_img("plot2.png")
+
+print(doc, target = "visualizations_2.docx")
+
+
+
+average_growth <- combined_df_a %>%
+  group_by(method_health, period) %>%
+  summarise(average_growth = mean(growth_B1G.Q.L, na.rm = TRUE))
+
+
+combined_df_a = drop_na(combined_df_a)
+
+plot$period = as.factor(plot$period)
+
+anova_result <- plot %>%
+  group_by(method_health_2, period) %>%
+  summarise(average_growth = mean(growth_B1G.Q.L, na.rm = TRUE)) %>%
+  ungroup() %>%
+  anova_test(average_growth ~ method_health_2 + period)
+
+emmeans(model, pairwise ~ Condition)
