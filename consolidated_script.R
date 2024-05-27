@@ -7,10 +7,6 @@ library(dplyr)
 library(tidyr)
 library(lubridate)
 library(ggplot2)
-
-install.packages("officer")
-install.packages("flextable")
-install.packages("sjPlot")
 library(officer)
 library(flextable)
 library(zoo)
@@ -325,6 +321,14 @@ combined_df_a$growth_B1G.P.P<-combined_df_a$growth_B1G.P.V-combined_df_a$growth_
 combined_df_a$growth_B1G.Q.P<-combined_df_a$growth_B1G.Q.V-combined_df_a$growth_B1G.Q.L
 
 
+######Clean house
+df_ANA = NULL
+df_QNA = NULL
+df_QNA_growth = NULL
+df_QNA_growth_reshaped = NULL
+df_ANA_growth = NULL
+tracker_data_D = NULL
+
 # Add category for health and education method of estimation
 
 #4 categories
@@ -337,7 +341,7 @@ combined_df_q <- combined_df_q %>%
     TRUE ~ NA_integer_
   ))
 
-#2 categories
+#4 categories
 combined_df_a <- combined_df_a %>%
   mutate(method_health = case_when(
     country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ "Deflation_Input",
@@ -347,7 +351,7 @@ combined_df_a <- combined_df_a %>%
     TRUE ~ NA_character_
   ))
 
-# 4 categories
+# 2 categories
 combined_df_a <- combined_df_a %>%
   mutate(method_health_2 = case_when(
     country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ "Deflation",
@@ -360,11 +364,20 @@ combined_df_a <- combined_df_a %>%
 
 combined_df_q <- combined_df_q %>%
   mutate(method_edu = case_when(
-    country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ 1,
-    country %in% c("") ~ 2,
-    country %in% c("IRL", "LVA", "ESP") ~ 3,
-    country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "MEX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ 4,
-    TRUE ~ NA_integer_
+    country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ "Deflation_Input",
+    country %in% c("") ~ "Deflation_Output",
+    country %in% c("IRL", "LVA", "ESP") ~ "Indicator_Input",
+    country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "MEX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ "Indicator_Output",
+    TRUE ~ NA_character_
+  ))
+
+combined_df_ss <- combined_df_ss %>%
+  mutate(method_edu_3 = case_when(
+    country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ "Deflation_Input",
+    country %in% c("") ~ "Deflation_Output",
+    country %in% c("IRL", "LVA", "ESP") ~ "Indicator_Input",
+    country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "MEX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ "Indicator_Output",
+    TRUE ~ NA_character_
   ))
 
 #2 categories
@@ -426,12 +439,6 @@ plot2 <- ggplot(combined_df_ss, aes(x = period, y = growth_B1G.Q.L, color = fact
   geom_text(aes(label = country), vjust = -0.5, size=6) +
   ggtitle("GVA for Health Sector and Year") +
   scale_color_discrete(name = "Estimation method", labels = c("Input - indirect", "Input - direct", "Output-indirect", "Output-direct")) 
-
-# Convert ggplot to plotly
-plotly_plot <- ggplotly(plot2)
-
-# Display the plotly plot
-plotly_plot
 
 
 #plot2 <- ggplot(combined_df_a, aes(x = period, y = growth_B1G.Q.L, color = factor(method_health_4))) +
@@ -497,68 +504,18 @@ plotly_plot
 ###################################
 
 
-#combined_df_a$method_health_relevel <- relevel(combined_df_a$method_health,"Indicators")
-
-#combined_df_a$period_relevel <- relevel(combined_df_a$period,"2020")
+combined_df_a$method_health_relevel <- relevel(combined_df_a$method_health,"Indicators")
 
 #combined_df_a$share_gva = (combined_df_a$OBS_VALUE_B1G.Q.V*100/combined_df_a$OBS_VALUE_B1G.V)
 
-model = lm(growth_B1G.Q.L ~ factor(method_health) +  factor(period), data = combined_df_a)
-summary(model)
-
-boxplot(model)
 
 
-#model = lm(growth_B1G.Q.L ~ factor(method_health) +  period_relevel, data = combined_df_a)
-#summary(model)
-
-#plot(model)
-
-ggplot(data = model_4, aes(x = model_4$residuals)) +
+ggplot(data = model_1, aes(x = model_1$residuals)) +
   geom_histogram(fill = 'steelblue', color = 'black') +
-  labs(title = 'Histogram of Residuals', x = 'Residuals', y = 'Frequency')
+  labs(title = 'Histogram of Residuals: Model 1', x = 'Residuals', y = 'Frequency')
 
-#model_1 = lm(growth_B1G.Q.L ~ method_health_relevel +  factor(period) - 1, data = combined_df_a)
-#summary(model_1)
+######### BOX PLOTS
 
-coefficients <- coef(summary(model))
-coefficients <- as.data.frame(coefficients)
-
-# Add row names to the data frame
-coefficients$row_names <- rownames(coefficients)
-
-coefficients <- coefficients %>% select(row_names, everything())
-
-
-# Create a flextable from regression results
-flex_table <- flextable(coefficients)
-
-plot1 = plot_model(model_1)
-print(plot1)
-
-
-####Trying out a fixed/random/mixed effects model
-
-## summary(gpa_mixed)
-
-#model = lm(growth_B1G.Q.L ~ factor(method_health)*period, data = combined_df_a)
-#summary(model)
-
-
-
-
-#random_effects <- plm(growth_B1G.Q.V ~ as.factor(method_health),
-#                    index = c("period"),
-#                    data = combined_df_a, 
-#                    model = "random")
-
-#summary(random_effects)
-
-
-
-######### FIGURES
-
-combined_df_a$period <- as.factor(combined_df_a$period)
 
 plot = subset(combined_df_a, select = c("country", "period", "growth_B1G.L", "growth_B1G.V", "growth_B1G.Q.L", "growth_B1G.Q.V", "growth_B1G.P.L", "growth_B1G.P.V",  "method_health", "method_edu", "method_health_2", "method_edu_3"))
 plot$method_health = as.factor(plot$method_health)
@@ -614,116 +571,209 @@ bartlett.test(growth_B1G.Q.L ~ factor(method_health), data = plot)
 
 bartlett.test(growth_B1G.L ~ factor(method_health), data = combined_df_a)
 
-
-# library
-library(multcompView)
+############ MODELS
 
 
 # What is the effect of the treatment on the value ?
-model_1 = lm(growth_B1G.Q.L ~  factor(period)*method_health, data = plot)
+model_1 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health+growth_B1G.Q.V, data = filtered_df)
 summary(model_1)
 
-coefficients <- coef(summary(model_1))
-coefficients <- as.data.frame(coefficients)
+model_1$coefficients
 
-# Add row names to the data frame
-coefficients$row_names <- rownames(coefficients)
+anova1 = aov(model_1)
+summary(anova1)
 
-coefficients <- coefficients %>% select(row_names, everything())
-# Create a flextable from regression results
-flex_table1 <- flextable(coefficients)
+##########################################################
+#now we try to group years 
+
+combined_df_ss$covid_status <- ifelse(combined_df_ss$period %in% c(2020, 2021), "covid", "nocovid")
+
+combined_df_ss <- combined_df_ss %>%
+  mutate(year_factor = case_when(
+    period <= 2019 ~ "pre-covid",
+    period == 2020 ~ "2020",
+    period == 2021 ~ "2021",
+    period == 2022 ~ "2022",
+    TRUE ~ NA_character_  # Optional: Handle years not specified in the categories
+  ))
+
+filtered_combined_df_ss <- combined_df_ss %>%
+  filter(period >= 2010 & period <= 2021)
+
+filtered_combined_df_ss$year_factor_rlv <- relevel(filtered_combined_df_ss$year_factor,"pre-covid")
+filtered_combined_df_ss$method_health = as.factor(filtered_combined_df_ss$method_health)
+filtered_combined_df_ss$method_health_rlv <- relevel(filtered_combined_df_ss$method_health,"Indicator_Output")
+
+data <- filtered_combined_df_ss %>%
+  mutate(method_health_2 = case_when(
+    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ "Deflation",
+    country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ "Indicator",
+    country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ "Deflation",
+    country %in% c("AUS", "BEL", "DNK", "FIN", "FRA", "HUN", "ITA", "NLD", "NOR", "NZL", "PRT", "SVN", "SWE", "GBR") ~ "Indicator",
+    TRUE ~ NA_character_
+  ))
+
+data <- filtered_combined_df_ss %>%
+  mutate(method_health_input = case_when(
+    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ "input",
+    country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ "input",
+    country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ "output",
+    country %in% c("AUS", "BEL", "DNK", "FIN", "FRA", "HUN", "ITA", "NLD", "NOR", "NZL", "PRT", "SVN", "SWE", "GBR") ~ "output",
+    TRUE ~ NA_character_
+  ))
 
 
+combined_df_q <- combined_df_q %>%
+  mutate(method_edu = case_when(
+    country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ "Deflation_Input",
+    country %in% c("") ~ "Deflation_Output",
+    country %in% c("IRL", "LVA", "ESP") ~ "Indicator_Input",
+    country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "MEX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ "Indicator_Output",
+    TRUE ~ NA_character_
+  ))
 
-model_2 = lm(growth_B1G.P.L ~  factor(period)*factor(method_edu), data = plot)
+combined_df_ss <- combined_df_ss %>%
+  mutate(method_edu_3 = case_when(
+    country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ "Deflation_Input",
+    country %in% c("") ~ "Deflation_Output",
+    country %in% c("IRL", "LVA", "ESP") ~ "Indicator_Input",
+    country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "MEX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ "Indicator_Output",
+    TRUE ~ NA_character_
+  ))
+
+#2 categories
+combined_df_a <- combined_df_a %>%
+  mutate(method_edu = case_when(
+    country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ 1,
+    country %in% c("") ~ 2,
+    country %in% c("IRL", "LVA", "ESP") ~ 1,
+    country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "MEX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ 2,
+    TRUE ~ NA_integer_
+  ))
+
+#3 categories
+combined_df_a <- combined_df_a %>%
+  mutate(method_edu_3 = case_when(
+    country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ 1,
+    country %in% c("") ~ 2,
+    country %in% c("IRL", "LVA", "ESP") ~ 3,
+    country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "MEX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ 4,
+    TRUE ~ NA_integer_
+  ))
+
+
+###############variance regression
+
+variance_data <- filtered_combined_df_ss %>%
+  group_by(method_health, period) %>%
+  summarise(across(starts_with("growth"), ~ var(.x, na.rm = TRUE), .names = "var_{col}"))
+
+
+mean_data <- combined_df_ss %>%
+  group_by(country, year_factor) %>%
+  summarise(across(starts_with("growth"), ~ mean(.x, na.rm = TRUE), .names = "mean_{col}"))
+
+
+variance_data_clean <- variance_data %>%
+  filter(!is.na(period) & !is.na(var_growth_B1G.Q.L))
+
+print(ggplot(variance_data_clean, aes(x = as.factor(period), y = var_growth_B1G.L, color = method_health, group = method_health)) +
+        geom_line() +
+        geom_point() +
+        labs(title = "Fig 1: Variance of GVA over time period for each estimation method group",
+             x = "Period",
+             y = "Variance of growth_B1G.L") +
+        theme_minimal())
+
+
+#### Variance graph
+print(ggplot(combined_df_ss, aes(x = period, y = growth_B1G.Q.L, color = country, shape = method_health, group = country)) +
+        geom_line() +
+        geom_point() +
+        labs(title = "Variance of growth_B1G.Q.L over Period for each method_health Group",
+             x = "Period",
+             y = "Variance of growth_B1G.Q.L") +
+        theme_minimal() +
+        theme(legend.position = "bottom"))
+
+
+########################
+ 
+#we want to look at year 2007, 2008, 2013 and 2020
+
+#results for current prices in equation
+#include variance
+#quantile regression
+
+
+model_1 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health_rlv+growth_B1G.Q.V, data = data)
+summary(model_1)
+
+anova1 = aov(model_1)
+summary(anova1)
+
+data$method_health_2 = as.factor(data$method_health_2)
+data$method_health_2 <- relevel(data$method_health_2,"Indicator")
+data$method_health_input = as.factor(data$method_health_input)
+data$method_health_input <- relevel(data$method_health_input,"output")
+
+
+model_2 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health_2+growth_B1G.Q.V, data = data)
 summary(model_2)
-coefficients2 <- coef(summary(model_2))
-coefficients2 <- as.data.frame(coefficients2)
 
-# Add row names to the data frame
-coefficients2$row_names <- rownames(coefficients2)
 
-coefficients2 <- coefficients2 %>% select(row_names, everything())
-# Create a flextable from regression results
-flex_table2 <- flextable(coefficients2)
-
-model_3 = lm(growth_B1G.L ~  factor(period)*factor(method_health), data = plot)
+model_3 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health_input+growth_B1G.Q.V, data = data)
 summary(model_3)
 
-coefficients3 <- coef(summary(model_3))
-coefficients3 <- as.data.frame(coefficients3)
-
-
-
-# Add row names to the data frame
-coefficients3$row_names <- rownames(coefficients3)
-
-coefficients3 <- coefficients3 %>% select(row_names, everything())
-# Create a flextable from regression results
-flex_table3 <- flextable(coefficients3)
-
-
-model_4 = lm(growth_B1G.Q.L ~  factor(period)*factor(method_health_2), data = combined_df_ss)
-summary(model_4)
-
-
-coefficients4 <- coef(summary(model_4))
-coefficients4 <- as.data.frame(coefficients4)
-
-
-# Add row names to the data frame
-coefficients4$row_names <- rownames(coefficients4)
-
-coefficients4 <- coefficients4 %>% select(row_names, everything())
-# Create a flextable from regression results
-flex_table4 <- flextable(coefficients4)
-
-coefficients_tidy <- tidy(model_1)
-
-# Print coefficients with category names
-print(coefficients_tidy)
-ANOVA=aov(model_4)
-
-summary(ANOVA)
-
-TukeyHSD(ANOVA, conf.level=.95)
-
-
-plot(TukeyHSD(ANOVA, conf.level=.95), las=2)
-
-#
-##########################################
-# Export results to .docx
-##########################################
-
-ggsave("plot1.png", plot1)
-ggsave("plot2.png", plot2)
-
-# Create a new Word document
-doc <- read_docx()
-
-# Add ggplots as images to the Word document
-doc <- doc %>%
-  body_add_img("plot1.png") %>%
-  body_add_img("plot2.png")
-
-print(doc, target = "visualizations_2.docx")
-
-
-
-average_growth <- combined_df_a %>%
-  group_by(method_health, period) %>%
-  summarise(average_growth = mean(growth_B1G.Q.L, na.rm = TRUE))
-
-
-combined_df_a = drop_na(combined_df_a)
-
-plot$period = as.factor(plot$period)
-
-anova_result <- plot %>%
-  group_by(method_health_2, period) %>%
-  summarise(average_growth = mean(growth_B1G.Q.L, na.rm = TRUE)) %>%
+#Histograms
+# Assuming your data frame is named `data`
+# Calculate the percentage within each year_factor
+data <- combined_df_ss %>%
+  group_by(method_health, year_factor_rlv) %>%
+  mutate(total_count = n()) %>%
   ungroup() %>%
-  anova_test(average_growth ~ method_health_2 + period)
+  group_by(method_health, year_factor_rlv, growth_B1G.Q.L) %>%
+  mutate(count = n()) %>%
+  ungroup() %>%
+  mutate(percentage = count / total_count)
 
-emmeans(model, pairwise ~ Condition)
+data_clean <- data %>%
+  filter(!is.na(growth_B1G.Q.L) & !is.na(method_health) & !is.na(year_factor_rlv))
+
+
+# Create the histogram
+ggplot(data_clean, aes(x = growth_B1G.Q.L, color = method_health, fill = method_health)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~ year_factor_rlv) +
+  scale_y_continuous(labels = percent_format()) +
+  labs(title = "Density Plot of growth_B1G.Q.L",
+       x = "Growth B1G.Q.L",
+       y = "Density") +
+  theme_minimal()
+
+
+# Assuming your data frame is named `data`
+# Calculate the percentage within each year_factor
+data <- filtered_combined_df_ss %>%
+  group_by(method_edu_3, year_factor_rlv) %>%
+  mutate(total_count = n()) %>%
+  ungroup() %>%
+  group_by(method_edu_3, year_factor_rlv, growth_B1G.P.L) %>%
+  mutate(count = n()) %>%
+  ungroup() %>%
+  mutate(percentage = count / total_count)
+
+data_clean <- data %>%
+  filter(!is.na(growth_B1G.P.L) & !is.na(method_edu_3) & !is.na(year_factor_rlv))
+
+
+# Create the histogram
+ggplot(data_clean, aes(x = growth_B1G.P.L, color = as.factor(method_edu_3), fill = as.factor(method_edu_3))) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~ year_factor_rlv) +
+  scale_y_continuous(labels = percent_format()) +
+  labs(title = "Density Plot of growth_B1G.P.L",
+       x = "Growth B1G.P.L",
+       y = "Density") +
+  theme_minimal()
+
