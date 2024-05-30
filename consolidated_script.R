@@ -371,7 +371,7 @@ combined_df_q <- combined_df_q %>%
     TRUE ~ NA_character_
   ))
 
-combined_df_ss <- combined_df_ss %>%
+combined_df_a <- combined_df_a %>%
   mutate(method_edu_3 = case_when(
     country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ "Deflation_Input",
     country %in% c("") ~ "Deflation_Output",
@@ -504,8 +504,8 @@ plot2 <- ggplot(combined_df_ss, aes(x = period, y = growth_B1G.Q.L, color = fact
 ###################################
 
 
-combined_df_a$method_health_relevel <- relevel(combined_df_a$method_health,"Indicators")
-
+combined_df_ss$method_health_relevel <- relevel(combined_df_ss$method_health,"Indicators")
+data = combined_df_ss
 #combined_df_a$share_gva = (combined_df_a$OBS_VALUE_B1G.Q.V*100/combined_df_a$OBS_VALUE_B1G.V)
 
 
@@ -517,7 +517,7 @@ ggplot(data = model_1, aes(x = model_1$residuals)) +
 ######### BOX PLOTS
 
 
-plot = subset(combined_df_a, select = c("country", "period", "growth_B1G.L", "growth_B1G.V", "growth_B1G.Q.L", "growth_B1G.Q.V", "growth_B1G.P.L", "growth_B1G.P.V",  "method_health", "method_edu", "method_health_2", "method_edu_3"))
+plot = subset(combined_df_ss, select = c("country", "period", "growth_B1G.L", "growth_B1G.V", "growth_B1G.Q.L", "growth_B1G.Q.V", "growth_B1G.P.L", "growth_B1G.P.V",  "method_health", "method_edu", "method_health_2", "method_edu_3"))
 plot$method_health = as.factor(plot$method_health)
 plot$period = as.factor(plot$period)
 plot = drop_na(plot)
@@ -613,7 +613,7 @@ data <- filtered_combined_df_ss %>%
     TRUE ~ NA_character_
   ))
 
-data <- filtered_combined_df_ss %>%
+data <- data %>%
   mutate(method_health_input = case_when(
     country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ "input",
     country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ "input",
@@ -623,7 +623,7 @@ data <- filtered_combined_df_ss %>%
   ))
 
 
-combined_df_q <- combined_df_q %>%
+data <- data %>%
   mutate(method_edu = case_when(
     country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ "Deflation_Input",
     country %in% c("") ~ "Deflation_Output",
@@ -632,7 +632,7 @@ combined_df_q <- combined_df_q %>%
     TRUE ~ NA_character_
   ))
 
-combined_df_ss <- combined_df_ss %>%
+data <- data %>%
   mutate(method_edu_3 = case_when(
     country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ "Deflation_Input",
     country %in% c("") ~ "Deflation_Output",
@@ -642,17 +642,17 @@ combined_df_ss <- combined_df_ss %>%
   ))
 
 #2 categories
-combined_df_a <- combined_df_a %>%
-  mutate(method_edu = case_when(
-    country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ 1,
-    country %in% c("") ~ 2,
-    country %in% c("IRL", "LVA", "ESP") ~ 1,
-    country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "MEX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ 2,
-    TRUE ~ NA_integer_
-  ))
+#combined_df_a <- combined_df_a %>%
+#  mutate(method_edu = case_when(
+#    country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ 1,
+#    country %in% c("") ~ 2,
+#    country %in% c("IRL", "LVA", "ESP") ~ 1,
+#    country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "MEX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ 2,
+#    TRUE ~ NA_integer_
+#  ))
 
 #3 categories
-combined_df_a <- combined_df_a %>%
+data <- data %>%
   mutate(method_edu_3 = case_when(
     country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ 1,
     country %in% c("") ~ 2,
@@ -687,7 +687,7 @@ print(ggplot(variance_data_clean, aes(x = as.factor(period), y = var_growth_B1G.
 
 
 #### Variance graph
-print(ggplot(combined_df_ss, aes(x = period, y = growth_B1G.Q.L, color = country, shape = method_health, group = country)) +
+print(ggplot(data, aes(x = period, y = growth_B1G.Q.L, color = country, shape = method_health, group = country)) +
         geom_line() +
         geom_point() +
         labs(title = "Variance of growth_B1G.Q.L over Period for each method_health Group",
