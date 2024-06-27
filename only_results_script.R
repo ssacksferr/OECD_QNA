@@ -1,4 +1,13 @@
 #First, relevel groups
+combined_df_a_subset <- combined_df_a %>%
+  select(country, period, excess_mortality)
+
+# Merge the two datasets on the 'country' and 'period' columns
+data <- data %>%
+  left_join(combined_df_a_subset, by = c("country", "period"))
+
+
+filtered_combined_df_ss = data
 
 #data <- filtered_combined_df_ss %>%
 #  mutate(method_health_2 = case_when(
@@ -9,17 +18,17 @@
 #    TRUE ~ NA_character_
 #  ))
 
-#data <- filtered_combined_df_ss %>%
-#  mutate(method_health_input = case_when(
-#    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ "input",
-#    country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ "input",
-#    country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ "output",
-#    country %in% c("AUS", "BEL", "DNK", "FIN", "FRA", "HUN", "ITA", "NLD", "NOR", "NZL", "PRT", "SVN", "SWE", "GBR") ~ "output",
-#    TRUE ~ NA_character_
-#  ))
+data <- combined_df_ss %>%
+  mutate(method_health_input = case_when(
+    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ "input",
+    country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ "input",
+    country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ "output",
+    country %in% c("AUS", "BEL", "DNK", "FIN", "FRA", "HUN", "ITA", "NLD", "NOR", "NZL", "PRT", "SVN", "SWE", "GBR") ~ "output",
+    TRUE ~ NA_character_
+  ))
 
 
-#combined_df_ss$method_health_relevel <- relevel(combined_df_a$method_health,"Indicators")
+data$method_health_relevel <- relevel(data$method_health,"Indicators")
 #filtered_combined_df_ss$year_factor_rlv <- relevel(filtered_combined_df_ss$year_factor,"pre-covid")
 #filtered_combined_df_ss$method_health = as.factor(filtered_combined_df_ss$method_health)
 #filtered_combined_df_ss$method_health_rlv <- relevel(filtered_combined_df_ss$method_health,"Indicator_Output")
@@ -46,7 +55,7 @@ data$method_edu_3 <- relevel(data$method_edu_3,"Indicator_Output")
 
 #Models
 
-model_1 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health_rlv+growth_B1G.Q.V - 1, data = data)
+model_1 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health_rlv+growth_B1G.Q.V + excess_mortality, data = data)
 summary(model_1)
 
 anova1 = aov(model_1)
@@ -56,7 +65,7 @@ model_2 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health_2+growth
 summary(model_2)
 
 
-model_3 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health_input+growth_B1G.Q.V, data = data)
+model_3 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health_input+growth_B1G.Q.V + data = data)
 summary(model_3)
 
 
@@ -84,35 +93,79 @@ data <- data %>%
   mutate(percentage = count / total_count)
 
 data_clean <- data %>%
-  filter(!is.na(growth_B1G.L) & !is.na(method_health) & !is.na(year_factor_rlv))
+  filter(!is.na(growth_B1G.Q.L) & !is.na(method_health) & !is.na(year_factor_rlv))
 
 
 # Create the histogram
-ggplot(data_clean, aes(x = growth_B1G.L, color = method_health, fill = method_health)) +
+ggplot(data_clean, aes(x = growth_B1G.Q.L, color = method_health, fill = method_health)) +
   geom_density(alpha = 0.5) +
   facet_wrap(~ year_factor_rlv) +
   scale_y_continuous(labels = percent_format()) +
-  labs(title = "Density Plot of growth_B1G.L",
-       x = "Growth B1G.L",
+  labs(title = "Density Plot of growth_B1G.Q.L",
+       x = "Growth B1G.Q,L",
        y = "Density") +
   theme_minimal()
 
 # Variance plots
 
 variance_data <- data %>%
-  group_by(method_health, period) %>%
+  group_by(method_health_rlv, period) %>%
   summarise(across(starts_with("growth"), ~ var(.x, na.rm = TRUE), .names = "var_{col}"))
+
+
 
 variance_data_clean <- variance_data %>%
   filter(!is.na(period) & !is.na(var_growth_B1G.Q.L))
 
-print(ggplot(variance_data_clean, aes(x = as.factor(period), y = var_growth_B1G.L, color = method_health, group = method_health)) +
+result <- variance_data_clean %>%
+  select(method_health_rlv, period, var_growth_B1G.Q.L) %>%
+  group_by(method_health_rlv, period) %>%
+  summarize(value = first(var_growth_B1G.Q.L), .groups = 'drop') %>%
+  pivot_wider(names_from = period, values_from = value)
+
+
+result <- data %>%
+  select(method_health_rlv, period, growth_B1G.Q.L) %>%
+  group_by(method_health_rlv, period) %>%
+  summarize(value = first(growth_B1G.Q.L), .groups = 'drop') %>%
+  pivot_wider(names_from = period, values_from = value)
+
+result
+plot(result)
+
+variance_of_averages <- average_growth %>%
+  group_by(period) %>%
+  summarize(variance = var(avg_growth), .groups = 'drop')
+
+# Print the variance of averages table
+print(variance_of_averages)
+
+write_xlsx(result, "output_table_avg.xlsx")
+
+p <- (ggplot(variance_data_edu, aes(x = as.factor(period), y = var_growth_B1G.P.L, color = method_edu_3, group = method_edu_3)) +
         geom_line() +
         geom_point() +
         labs(title = "Fig 1: Variance of GVA over time period for each estimation method group",
              x = "Period",
-             y = "Variance of growth_B1G.L")) +
+             y = "Variance of growth_B1G.P.L")) +
         theme_minimal()
+
+p + scale_fill_discrete(name = "Estimation method - Education")
+
+
+# Calculate the average growth for each method and period
+average_growth <- data %>%
+  group_by(method_health_rlv, period) %>%
+  summarize(avg_growth = mean(growth_B1G.Q.L), .groups = 'drop')
+
+# Create the bar chart with average labels on top of each bar
+ggplot(data, aes(x = period, y = growth_B1G.Q.L, fill = method_health_rlv)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +
+  geom_text(data = average_growth, aes(x = period, y = avg_growth, label = round(avg_growth, 2)),
+            position = position_dodge(width = 0.9), vjust = -1, size = 3) +
+  labs(title = "Growth by Method and Period", x = "Period", y = "Growth", fill = "Method") +
+  theme_minimal()
+
 
 #Boxplots for each estimation method
 
@@ -129,12 +182,12 @@ plot6 <- ggplot(data, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_h
   theme(legend.position = "bottom") +
   scale_fill_manual(name = "Estimation method", labels = c("Deflation input prices", "Input indicators", "Deflation output prices", "Output indicators"), values = color_palette)
 
-plot7 <- ggplot(data, aes(x = period, y = growth_B1G.P.L, fill = factor(method_edu_3))) +
+plot7 <- ggplot(data, aes(x = factor(period), y = growth_B1G.P.L, fill = factor(method_edu_3))) +
   geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
   theme_minimal() +
   labs(x = "Period", y = "Growth GVA Education", title = "Boxplot of real growth of GVA Education by Period and Method Education") +
   theme(legend.position = "bottom") +
-  scale_fill_manual(name = "Estimation method", labels = c("Deflation input prices", "Input indicators", "Output indicators"), values = color_palette)
+  scale_fill_manual(name = "Estimation method", labels = c("Deflation input prices", "Input indicators", "Output indicators"))
 
 
 plot8 <- ggplot(data, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health_2))) +
@@ -224,3 +277,35 @@ boxplot(growth_B1G.Q.L ~ method_health_rlv, data = data_2020,
         xlab = "Treatment", ylab = "Weight",
         frame = FALSE, col = c("#00AFBB", "#E7B800", "#FC4E07", "#A020F0"))
 
+
+
+#########
+#Descriptive statistics
+library(vtable)
+sumtable(data,
+         out="csv",
+         file="descriptive_file.csv")
+
+
+model_1 = lm(growth_B1G.Q.L ~  year_factor_rlv*method_health_rlv+growth_B1G.Q.V, data = data)
+summary(model_1)
+
+
+###################
+#Contributions
+
+library(readxl)
+contributions <- read_excel("C:/Users/sacksferrari_s/OneDrive - OECD/Working_Paper_GDP_method/contributions.xlsx")
+View(contributions)
+
+# Pivot the dataset to long format
+contrib <- contributions %>%
+  pivot_longer(cols = `2010`:`2022`, names_to = "period", values_to = "value") %>%
+  mutate(period = as.numeric(period))
+
+# Step 2: Pivot wider to create columns for each measure
+contrib <- contrib %>%
+  pivot_wider(names_from = measure, values_from = value)
+
+data <- data %>%
+  left_join(contrib, by = c("country", "period"))
