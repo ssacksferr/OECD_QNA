@@ -55,10 +55,10 @@ data$method_edu_3 <- relevel(data$method_edu_3,"Indicator_Output")
 
 #Models
 
-model_1 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health_rlv+growth_B1G.Q.V + excess_mortality, data = data)
+model_1 = lm(growth_B1G.Q.L ~  as.factor(period)+method_health_rlv+growth_B1G.Q.V + share_nmo_Q, data = data_historical)
 summary(model_1)
 
-anova1 = aov(model_1)
+anova1 = anova(model_1)
 summary(anova1)
 
 model_2 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health_2+growth_B1G.Q.V, data = data)
@@ -125,10 +125,11 @@ result <- variance_data_clean %>%
 
 
 result <- data %>%
+  filter(!is.na(method_health_rlv) & method_health_rlv != "") %>%  # Filter out rows with NA or empty method_health_rlv
   select(method_health_rlv, period, growth_B1G.Q.L) %>%
   group_by(method_health_rlv, period) %>%
-  summarize(value = first(growth_B1G.Q.L), .groups = 'drop') %>%
-  pivot_wider(names_from = period, values_from = value)
+  summarize(avg_value = mean(growth_B1G.Q.L, na.rm = TRUE), .groups = 'drop') %>%
+  pivot_wider(names_from = period, values_from = avg_value)
 
 result
 plot(result)
@@ -140,7 +141,7 @@ variance_of_averages <- average_growth %>%
 # Print the variance of averages table
 print(variance_of_averages)
 
-write_xlsx(result, "output_table_avg.xlsx")
+write_xlsx(result, "output_table_avg_v.xlsx")
 
 p <- (ggplot(variance_data_edu, aes(x = as.factor(period), y = var_growth_B1G.P.L, color = method_edu_3, group = method_edu_3)) +
         geom_line() +

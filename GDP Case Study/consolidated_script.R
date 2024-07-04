@@ -429,6 +429,10 @@ data$method_health_input <- relevel(data$method_health_input,"output")
 data$method_edu_3 <- as.factor(data$method_edu_3)
 data$method_edu_3 <- relevel(data$method_edu_3,"Output_Indicators")
 
+
+data$method_edu_3 <- as.factor(data$method_edu_3)
+data$method_edu_3_rl <- relevel(data$method_edu_3,"Deflation_Input")
+
 data$year_factor <- relevel(as.factor(data$year_factor),"pre-covid")
 
 #######################################################
@@ -465,24 +469,24 @@ data <- data %>%
 
 ##### Convert non market output variables to groups
 
-data$nmo_q_group <- cut(data$share_nmo_Q, 
-                   breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1), 
-                   labels = c("0 to 0.2", "0.21 to 0.4", "0.41 to 0.6", "0.61 to 0.8", "0.81 to 1"),
-                   include.lowest = TRUE)
+#data$nmo_q_group <- cut(data$share_nmo_Q, 
+#                   breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1), 
+#                   labels = c("0 to 0.2", "0.21 to 0.4", "0.41 to 0.6", "0.61 to 0.8", "0.81 to 1"),
+#                   include.lowest = TRUE)
 
 # Convert to factor
-data$nmo_q_group <- as.factor(data$nmo_q_group)
+#data$nmo_q_group <- as.factor(data$nmo_q_group)
 
 # View the result
-print(data$nmo_q_group)
+#print(data$nmo_q_group)
 
-data$nmo_p_group <- cut(data$share_nmo_P, 
-                        breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1), 
-                        labels = c("0 to 0.2", "0.21 to 0.4", "0.41 to 0.6", "0.61 to 0.8", "0.81 to 1"),
-                        include.lowest = TRUE)
+#data$nmo_p_group <- cut(data$share_nmo_P, 
+#                        breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1), 
+#                        labels = c("0 to 0.2", "0.21 to 0.4", "0.41 to 0.6", "0.61 to 0.8", "0.81 to 1"),
+#                        include.lowest = TRUE)
 
 # Convert to factor
-data$nmo_p_group <- as.factor(data$nmo_p_group)
+#data$nmo_p_group <- as.factor(data$nmo_p_group)
 
 # View the result
 #print(data$nmo_p_group)
@@ -507,6 +511,11 @@ data <- data %>%
                               share_nmo_P[year_factor == 2020],
                               share_nmo_P)) %>%
   ungroup()
+
+
+data$...16 = NULL
+
+data$excess_mortality[data$year_factor == "pre-covid"] <- 0
 
 
 # View the result
@@ -737,22 +746,22 @@ plot(model_1)
 anova1 = aov(model_1)
 summary(anova1)
 
-model_2 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health_2+growth_B1G.Q.V, data = data)
+model_2 = lm(growth_B1G.Q.L ~  year_factor*method_health_2+growth_B1G.Q.V+share_nmo_Q, data = data)
 summary(model_2)
 
 
-model_3 = lm(growth_B1G.Q.L ~  as.factor(year_factor_rlv)*method_health_input+growth_B1G.Q.V + data = data)
+model_3 = lm(growth_B1G.Q.L ~  year_factor*method_health_input+growth_B1G.Q.V + share_nmo_Q, data = data)
 summary(model_3)
 
 
-model_4 = lm(growth_B1G.P.L ~  as.factor(year_factor_rlv)*method_edu_3+growth_B1G.P.V, data = data)
+model_4 = lm(growth_B1G.P.L ~  year_factor*method_edu_3+growth_B1G.P.V+share_nmo_P, data = data)
 summary(model_4)
 
 
-model_5 = lm(growth_B1G.L ~  as.factor(year_factor_rlv)*method_health_rlv+growth_B1G.V, data = data)
+model_5 = lm(growth_B1G.L ~  year_factor*method_health_rlv+growth_B1G.V+share_nmo_total, data = data)
 summary(model_5)
 
-model_6 = lm(growth_B1G.L ~  as.factor(year_factor_rlv)*method_edu_3+growth_B1G.V, data = data)
+model_6 = lm(growth_B1G.L ~  year_factor*method_edu_3+growth_B1G.V+share_nmo_total, data = data)
 summary(model_6)
 
 
@@ -761,6 +770,16 @@ summary(model_6)
 
 model_1 = lm(growth_B1G.Q.L ~  year_factor*method_health_rlv+growth_B1G.Q.V+share_nmo_Q, data = data)
 summary(model_1)
+
+plot(model_wt, 3)
+
+plot(model_1)
+
+model.diag.metrics <- augment(model_1)
+ggplot(model.diag.metrics, aes(excess_mortality, growth_B1G.Q.L)) +
+  geom_point() +
+  stat_smooth(method = lm, se = FALSE) +
+  geom_segment(aes(xend = excess_mortality, yend = .fitted), color = "red", size = 0.3)
 
 anova1 = aov(model_1)
 summary(anova1)
@@ -787,39 +806,76 @@ summary(model_6)
 
 #Histograms
 
-data <- data %>%
-  group_by(method_health, year_factor_rlv) %>%
-  mutate(total_count = n()) %>%
-  ungroup() %>%
-  group_by(method_health, year_factor_rlv, growth_B1G.L) %>%
-  mutate(count = n()) %>%
-  ungroup() %>%
-  mutate(percentage = count / total_count)
 
 data_clean <- data %>%
-  filter(!is.na(growth_B1G.Q.L) & !is.na(method_health) & !is.na(year_factor_rlv))
+  filter(!is.na(growth_B1G.Q.L) & !is.na(method_health) & !is.na(year_factor))
 
 
 # Create the histogram
-ggplot(data_clean, aes(x = growth_B1G.Q.L, color = method_health, fill = method_health)) +
+p1 <- ggplot(data_clean, aes(x = growth_B1G.Q.L, color = method_health, fill = method_health)) +
   geom_density(alpha = 0.5) +
-  facet_wrap(~ year_factor_rlv) +
+  facet_wrap(~ year_factor) +
   scale_y_continuous(labels = percent_format()) +
-  labs(title = "Density Plot of growth_B1G.Q.L",
-       x = "Growth B1G.Q,L",
+  labs(x = "Growth B1G.Q,L",
        y = "Density") +
   theme_minimal()
+
+p1 + guides(color = guide_legend(title = "Estimation Method - Health"),
+            fill = guide_legend(title = "Estimation Method - Health"),
+            override.aes = list(fill = scales::alpha("white", 0.5))) 
+
+#Histograms
+library(dplyr)
+library(ggplot2)
+library(scales)
+
+# Remove rows with missing values in the specified columns
+filtered_data <- data %>%
+  filter(!is.na(growth_B1G.P.L) & !is.na(method_edu_3_rl) & !is.na(year_factor))
+
+# Create the histogram
+p1 <- ggplot(filtered_data, aes(x = growth_B1G.P.L, color = method_edu_3_rl, fill = method_edu_3_rl)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~ year_factor) +
+  scale_y_continuous(labels = percent_format()) +
+  labs(x = "Growth B1G.Q.L",
+       y = "Density") +
+  theme_minimal()
+
+p1 + guides(color = guide_legend(title = "Estimation Method - Education"),
+            fill = guide_legend(title = "Estimation Method - Education"),
+            override.aes = list(fill = scales::alpha("white", 0.5))) 
+
+ggplot(filtered_data, aes(x = growth_B1G.P.L, color = method_edu_3, fill = method_edu_3)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~ year_factor) +
+  labs(title = "Density Plot of GVA Growth in Education by period and method of estimation",
+       x = "Growth GVA in Education",
+       y = "Density (%)") +
+  theme_minimal() +
+  scale_y_continuous(limits = c(0, 1))
 
 # Variance plots
 
 variance_data <- data %>%
-  group_by(method_health_rlv, period) %>%
+  group_by(method_health, period) %>%
   summarise(across(starts_with("growth"), ~ var(.x, na.rm = TRUE), .names = "var_{col}"))
 
 
 
 variance_data_clean <- variance_data %>%
-  filter(!is.na(period) & !is.na(var_growth_B1G.Q.L))
+  filter(!is.na(method_edu_3))
+
+
+variance_data_clean <- variance_data_clean %>%
+  filter(!is.na(var_growth_B1G.P.L))
+
+
+variance_data_clean <- variance_data %>%
+  filter(!is.na(var_growth_B1G.Q.L))
+
+variance_data_clean <- variance_data %>%
+  filter(!is.na(method_health))
 
 result <- variance_data_clean %>%
   select(method_health_rlv, period, var_growth_B1G.Q.L) %>%
@@ -846,15 +902,14 @@ print(variance_of_averages)
 
 write_xlsx(result, "output_table_avg.xlsx")
 
-p <- (ggplot(variance_data_edu, aes(x = as.factor(period), y = var_growth_B1G.P.L, color = method_edu_3, group = method_edu_3)) +
+p <- (ggplot(variance_data_clean, aes(x = as.factor(period), y = var_growth_B1G.Q.L, color = method_health, group = method_health)) +
         geom_line() +
         geom_point() +
-        labs(title = "Fig 1: Variance of GVA over time period for each estimation method group",
-             x = "Period",
-             y = "Variance of growth_B1G.P.L")) +
+        labs(x = "Period",
+             y = "Variance of GVA in Health")) +
   theme_minimal()
 
-p + scale_fill_discrete(name = "Estimation method - Education")
+p + guides(color = guide_legend(title = "Estimation method - Health"))
 
 
 # Calculate the average growth for each method and period
@@ -922,7 +977,7 @@ bartlett.test()
 # Tukey test to study each pair of treatment :
 
 
-TukeyHSD(aov1)
+TukeyHSD(t_test_result)
 
 aov1 = aov(growth_B1G.Q.L ~ method_health, data=data)
 
@@ -947,39 +1002,28 @@ leveneTest(growth_B1G.Q.L ~ interaction(period,method_health), data=data)
 #Isolating 2020
 
 data_2020 <- data %>% 
-  filter(period == 2020)
+  filter(period == 2020|period == 2021)
 
-model.metrics <- augment(reg4)  # Remove details
 
-model.metrics %>% 
-  filter(abs(.std.resid) > 3) %>%
-  as.data.frame()
+#################################### THESE ARE THE ANOVA TO USE
 
-reg4= lm(growth_B1G.Q.L ~ factor(method_health) + growth_B1G.Q.V, data = data_2020)
+data_filtered <- data %>%
+  filter(!is.na(method_health_rlv), !is.na(period), !is.na(growth_B1G.Q.L), !is.na(year_factor), !is.na(share_nmo_Q), !is.na(growth_B1G.Q.V), !is.na(excess_mortality)) %>%
+  select(country, period, method_health_rlv, growth_B1G.Q.L, year_factor, share_nmo_Q, growth_B1G.Q.V, excess_mortality)
+
 
 t_test_result <- anova_test(growth_B1G.Q.L ~ as.factor(method_health_input)+growth_B1G.Q.V, data = data_historical)
-t_test_result <- anova_test(growth_B1G.Q.L ~ as.factor(method_health)+growth_B1G.Q.V, data = data_2020)
+
+t_test_result <- anova_test(growth_B1G.Q.L ~ period*method_health_rlv+growth_B1G.Q.V + share_nmo_Q, data = data_historical)
+t_test_result <- anova_test(growth_B1G.Q.L ~ year_factor*method_health_rlv+growth_B1G.Q.V + share_nmo_Q, data = data)
 
 
-mean_table <- data %>%
-  group_by(method_health) %>%
-  summarise(growth_B1G.Q.L = median(growth_B1G.Q.L, na.rm = TRUE))
-mean_table_2020 <- data_2020 %>% 
-  group_by(method_health) %>%
-  summarise(growth_B1G.Q.L = median(growth_B1G.Q.L, na.rm = TRUE))
+t_test_result <- anova_test(growth_B1G.P.L ~ period*method_edu_3+growth_B1G.P.V + share_nmo_P, data = data_historical)
+t_test_result <- anova_test(growth_B1G.P.L ~ year_factor*method_edu_3+growth_B1G.P.V + share_nmo_P, data = data)
 
-mean_data2020 <- data_2020 %>%
-  group_by(method_health_rlv) %>%
-  summarise(across(starts_with("growth"), ~ median(.x, na.rm = TRUE), .names = "median{col}"))
 
-t_test_result <- aov(mediangrowth_B1G.Q.L ~ method_health_rlv, data = mean_data2020)
-TukeyHSD(t_test_result)
-reg = lm(growth_B1G.Q.L ~ method_health_rlv + growth_B1G.Q.V, data = data_2020)
-summary(reg)
 
-boxplot(growth_B1G.Q.L ~ method_health_rlv, data = data_2020,
-        xlab = "Treatment", ylab = "Weight",
-        frame = FALSE, col = c("#00AFBB", "#E7B800", "#FC4E07", "#A020F0"))
+#######################################################
 
 
 
@@ -991,3 +1035,36 @@ sumtable(data,
          file="file.csv")
 
 
+
+######## WEIGHTED MODEL
+
+install.packages("lmtest")
+library(lmtest)
+library(dpylr)
+
+
+# Filter out NA values and select relevant columns
+data_filtered <- data %>%
+  filter(!is.na(method_health_rlv), !is.na(growth_B1G.Q.L), !is.na(year_factor), !is.na(share_nmo_Q), !is.na(growth_B1G.Q.V), !is.na(excess_mortality)) %>%
+  select(method_health_rlv, growth_B1G.Q.L, year_factor, share_nmo_Q, growth_B1G.Q.V, excess_mortality)
+
+
+model_1 = lm(growth_B1G.Q.L ~  year_factor*method_health_rlv+growth_B1G.Q.V + share_nmo_Q, data = data_filtered)
+summary(model_1)
+# Calculate weights based on the standard deviation of growth_B1G.Q.L
+# Replicate the weight for each row in data_filtered
+wt <- 1 / lm(abs(model_1$residuals) ~ model_1$fitted.values)$fitted.values^2
+
+model_wt = lm(growth_B1G.Q.L ~  year_factor*method_health_rlv+growth_B1G.Q.V + share_nmo_Q + excess_mortality, data = data_filtered, weights = wt)
+
+
+export_summs(model_1, model_wt, scale = TRUE, 
+             error_format = "[{conf.low}, {conf.high}]", 
+             to.file = "docx", file.name = "reg4.docx")
+
+# Display summary of the model
+summary(model_wt)
+summary(model_1)
+
+
+write_xlsx(data, "data.xlsx")
