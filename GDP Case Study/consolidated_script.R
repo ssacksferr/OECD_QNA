@@ -2,7 +2,6 @@
 
 ## Part 1: Input data
 
-.libPaths("g:/r/win-library/4.3")
 library(dplyr)
 library(tidyr)
 library(lubridate)
@@ -19,8 +18,10 @@ library(flextable)
 ############################################################################################################################################
 
 # Set working directory
-Path1 <- "\\\\FS19-MB-2\\SdataSDD\\Applic\\QNA\\A.Case study GDP and components\\Covid\\input data"
-setwd(Path1)
+#Path1 <- "\\\\FS19-MB-2\\SdataSDD\\Applic\\QNA\\A.Case study GDP and components\\Covid\\input data"
+#setwd(Path1)
+
+setwd("C:/Users/Sacksferrari_S/OneDrive - OECD/Working_Paper_GDP_method")
 
 # Read the data
 tracker_data_D <- read.csv("OxCGRT_compact_national_v1.csv")
@@ -66,7 +67,7 @@ tracker_data_Q_Diff <- subset(tracker_data_Q_Diff, select = -Date)
 
 
 ################################################################################
-# extract yearly data
+#2. extract yearly data
 ################################################################################
 
 # drop unnecessary variables
@@ -115,10 +116,10 @@ tracker_data_Y <- subset(tracker_data_Y, select = -Date)
 tracker_data_Y$period = as.integer(tracker_data_Y$period)
 
 ############################################################################################################################################
-# 2. RETRIEVE ELS EXCESS MORTALITY WEEKLY DATA FROM V8
+# 3. RETRIEVE ELS EXCESS MORTALITY WEEKLY DATA FROM V8
 ############################################################################################################################################
 
-url="https://sdmx.oecd.org/public/rest/data/OECD.ELS.HD,DSD_HEALTH_MORTALITY@DF_MORTALITY,1.0/.W.EM._T._T.PC_DT_A?startPeriod=2020-W01&endPeriod=2022-W52&dimensionAtObservation=AllDimensions&format=csvfilewithlabels"
+url="https://sdmx.oecd.org/public/rest/data/OECD.ELS.HD,DSD_HEALTH_MORTALITY@DF_MORTALITY/.W.EM._T._T.PC_DT_A?startPeriod=2020-W01&endPeriod=2022-W52&dimensionAtObservation=AllDimensions&format=csvfilewithlabels"
 df_ELS<-read.csv(url)
 
 #clean table
@@ -160,10 +161,10 @@ df_ELS_Q <- rename(df_ELS_Q, excess_mortality = OBS_VALUE)
 df_ELS_Q <- rename(df_ELS_Q, period = Quarter)
 
 ############################################################################################################################################
-# RETRIEVE ELS EXCESS MORTALITY WEEKLY DATA FROM V8 - yearly
+#4. RETRIEVE ELS EXCESS MORTALITY WEEKLY DATA FROM V8 - yearly
 ########################################################
 
-url <- "https://sdmx.oecd.org/public/rest/data/OECD.ELS.HD,DSD_HEALTH_MORTALITY@DF_MORTALITY,1.0/.W.EM._T._T.PC_DT_A?startPeriod=2020-W01&endPeriod=2022-W52&dimensionAtObservation=AllDimensions&format=csvfilewithlabels"
+url <- "https://sdmx.oecd.org/public/rest/data/OECD.ELS.HD,DSD_HEALTH_MORTALITY@DF_MORTALITY/.W.EM._T._T.PC_DT_A?startPeriod=2020-W01&endPeriod=2022-W52&dimensionAtObservation=AllDimensions&format=csvfilewithlabels"
 df_ELS <- read.csv(url)
 
 # Clean table
@@ -185,7 +186,7 @@ df_ELS_Y <- rename(df_ELS_Y, period = year)
 df_ELS_Y$year.1 <- NULL
 
 ############################################################################################################################################
-# 3. RETRIEVE QNA DATA FROM V8 FOR: adjustment=Y,price_base=L or Q, tables T0101/0102,transfo=N
+# 5. RETRIEVE QNA DATA FROM V8 FOR: adjustment=Y,price_base=L or Q, tables T0101/0102,transfo=N
 ############################################################################################################################################
 
 url="https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NAMAIN1@DF_QNA/Q.Y.........L+Q.N.T0101+T0102?startPeriod=2019-Q4&endPeriod=2022-Q4&&dimensionAtObservation=AllDimensions&format=csvfilewithlabels"
@@ -251,10 +252,10 @@ df_QNA_growth_reshaped <- pivot_wider(data = df_QNA_growth,
                                       values_from = c(growth, OBS_VALUE))
 
 ###############################################################
-#Import annual data in volumes for GVA_Q and GVA_P
+#6. Import annual data in volumes for GVA_Q and GVA_P
 ##############################################################
 
-url_ana="https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NAMAIN10@DF_TABLE6,1.0/A....B1G..P+Q+_T...L+V..?startPeriod=2009&endPeriod=2023&dimensionAtObservation=AllDimensions&format=csvfilewithlabels"
+url_ana="https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NAMAIN10@DF_TABLE6/A....B1G..P+Q+_T...L+V..?startPeriod=2009&endPeriod=2023&dimensionAtObservation=AllDimensions&format=csvfilewithlabels"
 df_ANA<-read.csv(url_ana)
 
 ANA_columns_to_keep<-c("REF_AREA","SECTOR","TRANSACTION","ACTIVITY","TIME_PERIOD","OBS_VALUE","TABLE_IDENTIFIER", "INSTR_ASSET", "PRICE_BASE")
@@ -296,27 +297,62 @@ df_ANA_growth_reshaped <- pivot_wider(data = df_ANA_growth,
                                       values_from = c(growth, OBS_VALUE))
 
 
+###############################################################
+#7. Import population data
+##############################################################
+
+url_pop="https://sdmx.oecd.org/public/rest/data/OECD.ELS.SAE,DSD_POPULATION@DF_POP_HIST,/..PS._T._T+Y20T64.?startPeriod=2010&endPeriod=2022&dimensionAtObservation=AllDimensions&format=csvfilewithlabels"
+df_pop<-read.csv(url_pop)
+
+# Assuming your dataset is named 'df'
+# Convert TIME_PERIOD to character to match with AGE and SEX
+df_pop$TIME_PERIOD <- as.character(df_pop$TIME_PERIOD)
+
+# Subset the data for OBS_STATUS for Y2064 (AGE == "Y20T64") and _T (SEX == "_T")
+obs_y2064 <- subset(df_pop, AGE == "Y20T64" & SEX == "_T", select=c(REF_AREA, TIME_PERIOD, OBS_VALUE))
+obs_total <- subset(df_pop, SEX == "_T" & AGE == "_T", select=c(REF_AREA, TIME_PERIOD, OBS_VALUE))
+
+# Merge the two subsets by REF_AREA and TIME_PERIOD
+pop_data <- merge(obs_y2064, obs_total, by=c("REF_AREA", "TIME_PERIOD"), suffixes=c("_Y2064", "_Total"))
+
+# Calculate the ratio of OBS_STATUS for Y2064 to _T
+pop_data$OBS_VALUE <- pop_data$OBS_VALUE_Y2064 / pop_data$OBS_VALUE_Total
+pop_data$OBS_VALUE = pop_data$OBS_VALUE*100
+
+pop_data <- rename(pop_data, country = REF_AREA)
+pop_data <- rename(pop_data, period = TIME_PERIOD)
+pop_data <- rename(pop_data, working_age = OBS_VALUE)
+
+pop_data <- subset(pop_data, select=c("country", "period", "working_age"))
+
+
+
 ################################################################
-## 3.Combined Oxford data, QNA data and ELS data
+## 8.Combined Oxford data, QNA data and ELS data
 ################################################################
 
 # Combine the 3 dataframes by country and period
-# combined_df <- merge(df_QNA_growth_reshaped, tracker_data_Q_Diff,df_ELS_Q, by = c("country", "period"), all = TRUE)
+#combined_df <- merge(df_QNA_growth_reshaped, tracker_data_Q_Diff,df_ELS_Q, by = c("country", "period"), all = TRUE)
 
-#combined_df_q <- merge(df_QNA_growth_reshaped, 
-#                       tracker_data_Q_Diff, 
-#                       df_ELS_Q, 
-#                       by.x = c("country", "period"),
-#                       by.y = c("country", "period"),
-#                       all = TRUE)
+combined_df_q <- merge(df_QNA_growth_reshaped, 
+                       tracker_data_Q_Diff, 
+                       df_ELS_Q, 
+                       by.x = c("country", "period"),
+                       by.y = c("country", "period"),
+                       all = TRUE)
 
 combined_df_a1 <- merge(df_ANA_growth_reshaped, 
                         tracker_data_Y, 
                         by = c("country", "period"), 
                         all = TRUE)
 
-combined_df_a <- merge(combined_df_a1, 
+combined_df_a2 <- merge(combined_df_a1, 
                        df_ELS_Y, 
+                       by = c("country", "period"), 
+                       all = TRUE)
+
+combined_df_a <- merge(combined_df_a2, 
+                       pop_data, 
                        by = c("country", "period"), 
                        all = TRUE)
 
@@ -324,7 +360,153 @@ combined_df_a$growth_B1G.P.P<-combined_df_a$growth_B1G.P.V-combined_df_a$growth_
 combined_df_a$growth_B1G.Q.P<-combined_df_a$growth_B1G.Q.V-combined_df_a$growth_B1G.Q.L
 
 
-# Add category for health and education method of estimation
+###############################################################
+#9. Import annual data for income levels
+##############################################################
+
+url_ppp="https://sdmx.oecd.org/public/rest/data/OECD.SDD.NAD,DSD_NAMAIN10@DF_TABLE1_EXPENDITURE_HVPVOB/A....B1GQ_POP.......?dimensionAtObservation=AllDimensions&format=csvfilewithlabels"
+df_ppp<-read.csv(url_ppp)
+
+ppp_columns_to_keep<-c("REF_AREA","TIME_PERIOD","OBS_VALUE")
+
+ppp_data<- df_ppp[,ppp_columns_to_keep]
+
+ppp_data <- rename(ppp_data, country = REF_AREA)
+ppp_data <- rename(ppp_data, period = TIME_PERIOD)
+
+#keep only GDP data from T0102 because duplicates with T0102
+#data for Russia removed cause not allowed to publish data for RUS
+
+ppp_data <- subset(ppp_data, select=c("country", "period", "OBS_VALUE"))
+
+ppp_data <- rename(ppp_data, gdp_percap = OBS_VALUE)
+
+combined_df_a <- merge(combined_df_a, 
+                       ppp_data, 
+                       by = c("country", "period"), 
+                       all = TRUE)
+
+###############################################################
+#10. Import annual data for education government share
+##############################################################
+
+url_edu_finance="https://sdmx.oecd.org/public/rest/data/OECD.EDU.IMEP,DSD_EAG_UOE_FIN@DF_UOE_FIN_SOURCE_GV_PR_NDOM,3.0/..ISCED11_1T8.S13.INST_EDU.._Z.PT_EXP.?startPeriod=2009&endPeriod=2022&dimensionAtObservation=AllDimensions&format=csvfilewithlabels"
+df_edu_char<-read.csv(url_edu_finance)
+
+edu_keep<-c("REF_AREA","TIME_PERIOD","OBS_VALUE", "EDUCATION_LEV")
+
+edu_data<- df_edu_char[,edu_keep]
+
+edu_data1 <- edu_data %>%
+  group_by(REF_AREA, TIME_PERIOD) %>%
+  summarise(average_OBS_VALUE = mean(OBS_VALUE, na.rm = TRUE), .groups = "drop")
+
+
+# Fill missing OBS_VALUE using the closest available year within each REF_AREA and EDUCATION_LEV
+edu_data2 <- edu_data1 %>%
+  arrange(REF_AREA,TIME_PERIOD) %>% # Ensure data is ordered
+  group_by(REF_AREA) %>% # Group by REF_AREA and EDUCATION_LEV
+  mutate(
+    OBS_VALUE = zoo::na.approx(average_OBS_VALUE, TIME_PERIOD, na.rm = FALSE, rule = 2)
+  ) %>%
+  ungroup()
+
+edu_data2 <- rename(edu_data2, country = REF_AREA)
+edu_data2 <- rename(edu_data2, period = TIME_PERIOD)
+edu_data2 <- rename(edu_data2, educ_share = OBS_VALUE)
+
+
+combined_df_a <- merge(combined_df_a, 
+                       edu_data2, 
+                       by = c("country", "period"), 
+                       all = TRUE)
+
+###############################################################
+#11. Import annual data for government expenditure in health
+##############################################################
+# Keep only relevant columns
+#health_exp_keep <- c("REF_AREA", "TIME_PERIOD", "OBS_VALUE", "EXP_SOURCE")
+#health_exp <- health_exp[, health_exp_keep]
+
+# Calculate the ratio
+#health_exp_ratio <- health_exp %>%
+#  filter(EXP_SOURCE %in% c("S14", "S13")) %>%
+#  select(REF_AREA, TIME_PERIOD, EXP_SOURCE, OBS_VALUE) %>%
+#  pivot_wider(names_from = EXP_SOURCE, values_from = OBS_VALUE) %>%
+#  mutate(ratio = S14 / S13) %>%
+#  select(REF_AREA, TIME_PERIOD, ratio)
+
+# Impute missing values
+#health_exp_ratio_imputed <- health_exp_ratio %>%
+#  arrange(REF_AREA, TIME_PERIOD) %>%  # Ensure data is sorted by REF_AREA and TIME_PERIOD
+#  group_by(REF_AREA) %>%             # Group by REF_AREA to handle each country separately
+#  mutate(
+#    health_ratio = ifelse(is.na(ratio), NA_real_, ratio)  # Prepare column for filling
+#  ) %>%
+#  fill(health_ratio, .direction = "down") %>%  # Fill missing values from prior years
+#  ungroup()
+
+# Prepare final data
+#final_data <- health_exp_ratio_imputed %>%
+#  rename(country = REF_AREA, period = TIME_PERIOD, health_exp_ratio = health_ratio) %>%
+#  arrange(country, period)
+
+
+#keep only GDP data from T0102 because duplicates with T0102
+#data for Russia removed cause not allowed to publish data for RUS
+
+#combined_df_a <- merge(combined_df_a, 
+#                       final_data, 
+#                       by = c("country", "period"), 
+#                       all = TRUE)
+###############################################################
+#11. Import annual data for income inequality
+##############################################################
+
+#url_gini="https://sdmx.oecd.org/public/rest/data/OECD.WISE.INE,DSD_WISE_IDD@DF_IDD,1.0/.A.INC_DISP_GINI..._T.METH2012.D_CUR.?startPeriod=2010&dimensionAtObservation=AllDimensions&format=csvfilewithlabels"
+#df_gini<-read.csv(url_gini)
+
+#gini_columns_to_keep<-c("REF_AREA","TIME_PERIOD","OBS_VALUE")
+
+#gini_data<- df_gini[,gini_columns_to_keep]
+
+#gini_data <- rename(gini_data, country = REF_AREA)
+#gini_data <- rename(gini_data, period = TIME_PERIOD)
+
+#gini_data <- subset(gini_data, select=c("country", "period", "OBS_VALUE"))
+
+#gini_data <- rename(gini_data, gini = OBS_VALUE)
+
+#combined_df_a <- merge(combined_df_a, 
+#                       gini_data, 
+#                       by = c("country", "period"), 
+#                      all = TRUE)
+
+###############################################################
+## Import Health classification data
+###############################################################
+
+library(readxl)
+health_sys <- read_excel("C:/Users/sacksferrari_s/OneDrive - OECD/Working_Paper_GDP_method/health_system_els.xlsx")
+
+# Merge usa_growth data into combined_df_a and update relevant columns for USA
+combined_df_a <- merge(
+  combined_df_a, 
+  health_sys, 
+  by = "country", 
+  all.x = TRUE, 
+)
+
+# Update columns for USA and remove temporary columns in one step
+combined_df_a$reference_area = NULL
+combined_df_a$system_type = NULL 
+# View the updated structure
+str(combined_df_a)
+
+
+###############################################################
+#12. Add category for health and education method of estimation
+###############################################################
 
 #4 categories
 #combined_df_q <- combined_df_q %>%
@@ -340,7 +522,7 @@ combined_df_a$growth_B1G.Q.P<-combined_df_a$growth_B1G.Q.V-combined_df_a$growth_
 # 4 categories
 combined_df_a <- combined_df_a %>%
   mutate(method_health = case_when(
-    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ "Deflation_Input",
+    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR", "ISR") ~ "Deflation_Input",
     country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ "Indicator_Input",
     country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ "Deflation_Output",
     country %in% c("AUS", "BEL", "DNK", "FIN", "FRA", "HUN", "ITA", "NLD", "NOR", "NZL", "PRT", "SVN", "SWE", "GBR") ~ "Indicator_Output",
@@ -370,12 +552,41 @@ combined_df_a <- combined_df_a %>%
 #3 categories
 combined_df_a <- combined_df_a %>%
   mutate(method_edu_3 = case_when(
-    country %in% c("CAN", "JPN", "KOR", "COL", "USA") ~ "Deflation_Input",
+    country %in% c("JPN", "KOR", "COL", "USA", "ISR") ~ "Deflation_Input",
     country %in% c("") ~ "Deflation_Output",
-    country %in% c("IRL", "LVA", "ESP", "MEX") ~ "Input_Indicators",
-    country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "NLD", "NZL", "POL", "PRT", "SVK", "SVN", "SWE", "ZAF", "GBR") ~ "Output_Indicators",
+    country %in% c("CAN", "IRL", "LVA", "ESP", "MEX", "SVK") ~ "Input_Indicators",
+    country %in% c("AUS", "AUT", "BEL", "CHL", "CZE", "DNK", "FIN", "FRA", "DEU", "HUN", "ITA", "LUX", "NOR", "NLD", "NZL", "POL", "PRT", "SVN", "SWE", "ZAF", "GBR") ~ "Output_Indicators",
     TRUE ~ NA_character_
   ))
+
+
+#####################################
+# Import imputed US data
+#####################################
+
+library(readxl)
+usa_growth <- read_excel("C:/Users/sacksferrari_s/OneDrive - OECD/Working_Paper_GDP_method/usa_growth.xlsx")
+
+# Merge usa_growth data into combined_df_a and update relevant columns for USA
+combined_df_a <- merge(
+  combined_df_a, 
+  usa_growth, 
+  by = c("country", "period"), 
+  all.x = TRUE, 
+  suffixes = c("", "_usa")
+)
+
+# Update columns for USA and remove temporary columns in one step
+combined_df_a <- within(combined_df_a, {
+  growth_B1G.P.L <- ifelse(country == "USA" & !is.na(growth_B1G.P.L_usa), growth_B1G.P.L_usa, growth_B1G.P.L)
+  growth_B1G.Q.L <- ifelse(country == "USA" & !is.na(growth_B1G.Q.L_usa), growth_B1G.Q.L_usa, growth_B1G.Q.L)
+  rm(growth_B1G.P.L_usa, growth_B1G.Q.L_usa) # Remove temporary columns
+})
+
+# View the updated structure
+str(combined_df_a)
+
+
 
 
 ###################################################################
@@ -386,11 +597,14 @@ combined_df_a <- combined_df_a %>%
 
 ##Annual data
 
-combined_df_ss <- subset(combined_df_a, select=c("country", "period", "method_health", "growth_B1G.P.L", "growth_B1G.P.V", "growth_B1G.Q.L", "growth_B1G.Q.V", "growth_B1G.L", "growth_B1G.V", "growth_B1G.Q.P", "growth_B1G.P.P", "method_edu_3", "excess_mortality"))
+combined_df_ss <- subset(combined_df_a, select=c("country", "period", "method_health", "growth_B1G.P.L", "growth_B1G.P.V", "growth_B1G.Q.L", "growth_B1G.Q.V", "growth_B1G.L", "growth_B1G.V", "method_edu_3", 
+                                                 "excess_mortality", 
+                                                 "working_age", "gdp_percap", 
+                                                 "educ_share", "health_sys"))
 
 data <- combined_df_ss %>%
   mutate(method_health_2 = case_when(
-    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ "Deflation",
+    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR", "ISR") ~ "Deflation",
     country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ "Indicator",
     country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ "Deflation",
     country %in% c("AUS", "BEL", "DNK", "FIN", "FRA", "HUN", "ITA", "NLD", "NOR", "NZL", "PRT", "SVN", "SWE", "GBR") ~ "Indicator",
@@ -399,7 +613,7 @@ data <- combined_df_ss %>%
 
 data <- data %>%
   mutate(method_health_input = case_when(
-    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR") ~ "input",
+    country %in% c("AUT", "CHL", "COL", "CZE", "POL", "KOR", "ISR") ~ "input",
     country %in% c("CAN", "IRL", "LVA", "MEX", "SVK", "ESP") ~ "input",
     country %in% c("DEU", "JPN", "LUX", "ZAF", "USA") ~ "output",
     country %in% c("AUS", "BEL", "DNK", "FIN", "FRA", "HUN", "ITA", "NLD", "NOR", "NZL", "PRT", "SVN", "SWE", "GBR") ~ "output",
@@ -417,7 +631,11 @@ data <- data %>%
   ))
 
 data <- data %>%
-  filter(period >= 2010 & period <= 2021)
+  filter(period >= 2010)
+         
+#& period <= 2021)
+
+
 
 data$method_health = as.factor(data$method_health)
 data$method_health_rlv <- relevel(data$method_health,"Indicator_Output")
@@ -435,30 +653,42 @@ data$method_edu_3_rl <- relevel(data$method_edu_3,"Deflation_Input")
 
 data$year_factor <- relevel(as.factor(data$year_factor),"pre-covid")
 
+
+data$health_sys <- as.factor(data$health_sys)
+data$health_sys <- relevel(data$health_sys,"nhi")
 #######################################################
 #Incorporate contribution and non market output data:
 
 
 library(readxl)
 contributions <- read_excel("C:/Users/sacksferrari_s/OneDrive - OECD/Working_Paper_GDP_method/contributions.xlsx")
-View(contributions)
 
-# Pivot the dataset to long format
+# Assuming your dataset is called contributions
 contrib <- contributions %>%
-  pivot_longer(cols = starts_with("20"), names_to = "period", values_to = "value") %>%
-  mutate(period = as.integer(period))
+  # Select only the relevant columns
+  select(country, measure, average) %>%
+  # Pivot the data to make measures as columns
+  pivot_wider(
+    names_from = measure, 
+    values_from = average
+  )
 
-# Step 2: Pivot wider to create columns for each measure
-contrib <- contrib %>%
-  pivot_wider(names_from = measure, values_from = value)
 
+contrib <- contrib %>% mutate_all(~ifelse(is.nan(.), NA, .))
 
 data <- data %>%
-  left_join(contrib, by = c("country", "period"))
+  left_join(contrib, by = c("country"))
 
-delete = c("combined_df_a1", "combined_df_q", "df_ANA", "df_ANA_growth", "df_ANA1", "df_ELS", 
+
+delete = c("combined_df_a1", "combined_df_a2", "combined_df_q", "contrib", 
+           "contributions", "df_ANA", "df_ANA_growth", "df_ANA_growth_reshaped", 
+           "df_ANA1", "df_ELS", "df_edu_char",
            "df_ELS_Q", "df_ELS_Y", "df_QNA", "df_QNA_growth", "df_QNA1", 
-           "tracker_data_D", "tracker_data_Q", "tracker_data_Q_Diff")
+           "tracker_data_D", "tracker_data_Q", "tracker_data_Q_Diff", 
+           "df_pop", "df_ppp", "df_QNA_growth_reshaped",
+           "edu_data", "edu_data1", "edu_data2", "obs_total", "obs_y2064", 
+           "pop_data", "ppp_data", "tracker_data_A", "tracker_data_Y",
+           "tracker_data_Y_Diff", "usa_growth")
 
 rm(list=delete)
 
@@ -469,60 +699,23 @@ data <- data %>%
 
 ##### Convert non market output variables to groups
 
-#data$nmo_q_group <- cut(data$share_nmo_Q, 
-#                   breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1), 
-#                   labels = c("0 to 0.2", "0.21 to 0.4", "0.41 to 0.6", "0.61 to 0.8", "0.81 to 1"),
-#                   include.lowest = TRUE)
-
-# Convert to factor
-#data$nmo_q_group <- as.factor(data$nmo_q_group)
-
-# View the result
-#print(data$nmo_q_group)
-
-#data$nmo_p_group <- cut(data$share_nmo_P, 
-#                        breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1), 
-#                        labels = c("0 to 0.2", "0.21 to 0.4", "0.41 to 0.6", "0.61 to 0.8", "0.81 to 1"),
-#                        include.lowest = TRUE)
-
-# Convert to factor
-#data$nmo_p_group <- as.factor(data$nmo_p_group)
-
-# View the result
-#print(data$nmo_p_group)
-
-data <- data %>%
-  arrange(country, year_factor) %>%
-  group_by(country) %>%
-  mutate(share_nmo_Q = ifelse(year_factor == 2021 & is.na(share_nmo_Q),
-                              share_nmo_Q[year_factor == 2020],
-                              share_nmo_Q)) %>%
-  ungroup()
-
-
-
-# Impute missing values for the filtered countries
-
-
-data <- data %>%
-  arrange(country, year_factor) %>%
-  group_by(country) %>%
-  mutate(share_nmo_P = ifelse(year_factor == 2021 & is.na(share_nmo_P),
-                              share_nmo_P[year_factor == 2020],
-                              share_nmo_P)) %>%
-  ungroup()
-
-
-data$...16 = NULL
 
 data$excess_mortality[data$year_factor == "pre-covid"] <- 0
 
 
 # View the result
-print(df)
+print(data)
 ####################################
 # UP TO HERE, THIS IS DATA MANIPULATION.
 ####################################
+
+#alternatively, import data:
+library(openxlsx)
+write.xlsx(data, "complete_data_21jan.xlsx")
+save(data, file = "complete_data_21jan.RData")
+#to load:
+#load("complete_data_november25.RData")
+
 
 ##########################################
 #Part 3: Different visualizations
@@ -629,194 +822,135 @@ print(df)
 #color_palette <- c("1" = "#66C2A5", "2" = "#FC8D62", "3" = "#8DA0CB", "4" = "#E78AC3")
 
 
-plot6 <- ggplot(plot, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health_4))) +
-  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
-  theme_minimal() +
-  labs(x = "Period", y = "Growth GVA Health", title = "Boxplot of real growth of GVA Health by Period and Method Health") +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(name = "Estimation method", 
-                    labels = c("Deflation input prices", "Input indicators", "Deflation output prices", "Output indicators"))
+#plot6 <- ggplot(plot, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health_4))) +
+#  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
+#  theme_minimal() +
+#  labs(x = "Period", y = "Growth GVA Health", title = "Boxplot of real growth of GVA Health by Period and Method Health") +
+#  theme(legend.position = "bottom") +
+# scale_fill_manual(name = "Estimation method", 
+#                    labels = c("Deflation input prices", "Input indicators", "Deflation output prices", "Output indicators"))
 
-print(plot6)
-
-
-plot7 <- ggplot(plot, aes(x = period, y = growth_B1G.P.L, fill = factor(method_edu_3))) +
-  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
-  theme_minimal() +
-  labs(x = "Period", y = "Growth GVA Education", title = "Boxplot of real growth of GVA Education by Period and Method Education") +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(name = "Estimation method", labels = c("Deflation input prices", "Input indicators", "Output indicators"), values = color_palette)
+#print(plot6)
 
 
-plot8 <- ggplot(plot, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health))) +
-  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
-  theme_minimal() +
-  labs(x = "Period", y = "Growth GVA Health", title = "Boxplot of real growth of GVA Health by Period and Method Health") +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(name = "Estimation method", labels = c("Indirect (deflation)", "Direct (indicators)"), values = color_palette)
+#plot7 <- ggplot(plot, aes(x = period, y = growth_B1G.P.L, fill = factor(method_edu_3))) +
+#  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
+#  theme_minimal() +
+#  labs(x = "Period", y = "Growth GVA Education", title = "Boxplot of real growth of GVA Education by Period and Method Education") +
+#  theme(legend.position = "bottom") +
+#  scale_fill_manual(name = "Estimation method", labels = c("Deflation input prices", "Input indicators", "Output indicators"), values = color_palette)
 
 
-plot9 <- ggplot(plot, aes(x = factor(period), y = growth_B1G.P.L, fill = factor(method_edu))) +
-  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
-  theme_minimal() +
-  labs(x = "Period", y = "Growth GVA Education", title = "Boxplot of real growth of GVA Education by Period and Method Education") +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(name = "Estimation method", labels = c("Indirect (deflation)", "Direct (indicators)"), values = color_palette)
+#plot8 <- ggplot(plot, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health))) +
+#  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
+#  theme_minimal() +
+#  labs(x = "Period", y = "Growth GVA Health", title = "Boxplot of real growth of GVA Health by Period and Method Health") +
+#  theme(legend.position = "bottom") +
+#  scale_fill_manual(name = "Estimation method", labels = c("Indirect (deflation)", "Direct (indicators)"), values = color_palette)
+
+
+#plot9 <- ggplot(plot, aes(x = factor(period), y = growth_B1G.P.L, fill = factor(method_edu))) +
+#  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
+#  theme_minimal() +
+#  labs(x = "Period", y = "Growth GVA Education", title = "Boxplot of real growth of GVA Education by Period and Method Education") +
+#  theme(legend.position = "bottom") +
+#  scale_fill_manual(name = "Estimation method", labels = c("Indirect (deflation)", "Direct (indicators)"), values = color_palette)
 
 
 
 ######BOX PLOTS CONTRIBUTIONS TO GROWTH
-install.packages("ggforce")
-library(ggforce)
-ggplot(data, aes(x = factor(period), y = contrib_B1G_P_V, fill = factor(method_edu_3))) +
-  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
-  theme_minimal() +
-  labs(x = "Period", y = "Growth Share in GVA Education", title = "Boxplot ofgrowth of Share of GVA Education by Period and Method Education") +
-  theme(legend.position = "bottom") 
+#install.packages("ggforce")
+#library(ggforce)
+#ggplot(data, aes(x = factor(period), y = contrib_B1G_P_V, fill = factor(method_edu_3))) +
+#  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
+#  theme_minimal() +
+#  labs(x = "Period", y = "Growth Share in GVA Education", title = "Boxplot ofgrowth of Share of GVA Education by Period and Method Education") +
+#  theme(legend.position = "bottom") 
 
 
-library(ggplot2)
-library(ggforce)
+#library(ggplot2)
+#library(ggforce)
 
-ggplot(data, aes(x = factor(period), y = contrib_B1G_P_V, fill = factor(method_edu_3))) +
-  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
-  theme_minimal() +
-  labs(x = "Period", y = "Growth Share in GVA Education", title = "Boxplot of Growth of Share of GVA Education by Period and Method Education") +
-  theme(legend.position = "bottom") +
-  facet_zoom(ylim = c(-1, 1), zoom.data = contrib_B1G_P_V >= -1 & contrib_B1G_P_V <= 1)
+#ggplot(data, aes(x = factor(period), y = contrib_B1G_P_V, fill = factor(method_edu_3))) +
+#  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
+#  theme_minimal() +
+#  labs(x = "Period", y = "Growth Share in GVA Education", title = "Boxplot of Growth of Share of GVA Education by Period and Method Education") +
+#  theme(legend.position = "bottom") +
+#  facet_zoom(ylim = c(-1, 1), zoom.data = contrib_B1G_P_V >= -1 & contrib_B1G_P_V <= 1)
 
 
-library(ggplot2)
-library(grid)
+#library(ggplot2)
+#library(grid)
 
 # Main plot without outliers
-main_plot <- ggplot(data, aes(x = factor(period), y = contrib_B1G_P_V, fill = factor(method_edu_3))) +
-  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75), outlier.shape = NA) +
-  theme_minimal() +
-  labs(x = "Period", y = "Growth Share in GVA Education") +
-  coord_cartesian(ylim = c(-0.5, 0.5))
+#main_plot <- ggplot(data, aes(x = factor(period), y = contrib_B1G_P_V, fill = factor(method_edu_3))) +
+#  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75), outlier.shape = NA) +
+#  theme_minimal() +
+#  labs(x = "Period", y = "Growth Share in GVA Education") +
+#  coord_cartesian(ylim = c(-0.5, 0.5))
 
 # Outliers plot
-outliers <- subset(data, contrib_B1G_P_V < -1 | contrib_B1G_P_V > 1)
-outlier_plot <- ggplot(outliers, aes(x = factor(period), y = contrib_B1G_P_V, fill = factor(method_edu_3))) +
-  geom_point(position = position_dodge(width = 0.75), alpha = 1) +
-  theme_minimal() +
-  labs(x = NULL, y = NULL) +
-  coord_cartesian(ylim = c(-4, -1)) +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
+#outliers <- subset(data, contrib_B1G_P_V < -1 | contrib_B1G_P_V > 1)
+#outlier_plot <- ggplot(outliers, aes(x = factor(period), y = contrib_B1G_P_V, fill = factor(method_edu_3))) +
+#  geom_point(position = position_dodge(width = 0.75), alpha = 1) +
+#  theme_minimal() +
+#  labs(x = NULL, y = NULL) +
+#  coord_cartesian(ylim = c(-4, -1)) +
+#  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank())
 
 # Arrange the plots using grid
-grid.newpage()
-pushViewport(viewport(layout = grid.layout(2, 1, heights = unit(c(2, 1), "null"))))
+#grid.newpage()
+#pushViewport(viewport(layout = grid.layout(2, 1, heights = unit(c(2, 1), "null"))))
 
-print(main_plot, vp = viewport(layout.pos.row = 1))
-print(outlier_plot, vp = viewport(layout.pos.row = 2))
+#print(main_plot, vp = viewport(layout.pos.row = 1))
+#print(outlier_plot, vp = viewport(layout.pos.row = 2))
 
-
-
-#Models
-
-model_1 = lm(growth_B1G.Q.L ~  year_factor*method_health_rlv+growth_B1G.Q.V + share_nmo_Q, data = data)
-summary(model_1)
-
-# Filter out rows where method_health is NA
-filtered_data <- data[!is.na(data$method_health), ]
-
-ggplot(filtered_data, aes(x = growth_B1G.Q.L, y = share_nmo_Q, color = method_health)) +
-  geom_point(size = 3, alpha = 0.7) +  # Use points for each data point with increased size and transparency
-  geom_text(aes(label = country), size = 3, vjust = -0.5) +  # Add country labels with slightly larger size
-  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +  # Add linear trend lines with dashed lines
-  xlim(-40, 40) +
-  ylim(0, 1) +
-  geom_vline(xintercept = 0, linetype = "solid", size = 1, color = "black") +  # Add bold vertical line at x = 0
-  labs(x = "Growth B1G.Q.V", y = "Share NMO Q", color = "Health Method") +  # Improve axis and legend labels
-  facet_wrap(~ year_factor, scales = "free") +  # Facet by year_factor
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),  # Center and bold plot title
-    axis.title = element_text(size = 12, face = "bold"),  # Bold axis titles
-    axis.text = element_text(size = 10),  # Increase axis text size
-    legend.title = element_text(size = 10),  # Increase legend title size
-    legend.text = element_text(size = 9),  # Increase legend text size
-    strip.text = element_text(size = 10)  # Increase facet label size
-  )
-
-plot(model_1)
-
-anova1 = aov(model_1)
-summary(anova1)
-
-model_2 = lm(growth_B1G.Q.L ~  year_factor*method_health_2+growth_B1G.Q.V+share_nmo_Q, data = data)
-summary(model_2)
-
-
-model_3 = lm(growth_B1G.Q.L ~  year_factor*method_health_input+growth_B1G.Q.V + share_nmo_Q, data = data)
-summary(model_3)
-
-
-model_4 = lm(growth_B1G.P.L ~  year_factor*method_edu_3+growth_B1G.P.V+share_nmo_P, data = data)
-summary(model_4)
-
-
-model_5 = lm(growth_B1G.L ~  year_factor*method_health_rlv+growth_B1G.V+share_nmo_total, data = data)
-summary(model_5)
-
-model_6 = lm(growth_B1G.L ~  year_factor*method_edu_3+growth_B1G.V+share_nmo_total, data = data)
-summary(model_6)
-
+data2 <- data[!is.na(data$method_health) & !is.na(data$method_edu_3), ]
 
 
 #Models
 
-model_1 = lm(growth_B1G.Q.L ~  year_factor*method_health_rlv+growth_B1G.Q.V+share_nmo_Q, data = data)
+model_1 = lm(growth_B1G.Q.L ~  year_factor*method_health_rlv+growth_B1G.Q.V + share_nmo_Q+working_age+gdp_percap, data = data)
 summary(model_1)
 
-plot(model_wt, 3)
+model_1 = lm(growth_B1G.Q.L ~  year_factor*method_health_rlv+growth_B1G.Q.V + share_nmo_Q+working_age+gdp_percap+as.factor(health_sys), data = data)
+summary(model_1)
 
-plot(model_1)
 
-model.diag.metrics <- augment(model_1)
-ggplot(model.diag.metrics, aes(excess_mortality, growth_B1G.Q.L)) +
-  geom_point() +
-  stat_smooth(method = lm, se = FALSE) +
-  geom_segment(aes(xend = excess_mortality, yend = .fitted), color = "red", size = 0.3)
-
-anova1 = aov(model_1)
-summary(anova1)
-
-model_2 = lm(growth_B1G.Q.L ~  year_factor*method_health_2+growth_B1G.Q.V+share_nmo_Q, data = data)
+model_2 = lm(growth_B1G.Q.L ~  year_factor*method_health_2+growth_B1G.Q.V + share_nmo_Q+working_age+gdp_percap++as.factor(health_sys), data = data)
 summary(model_2)
 
 
-model_3 = lm(growth_B1G.Q.L ~  year_factor*method_health_input+growth_B1G.Q.V +share_nmo_Q, data = data)
+model_3 = lm(growth_B1G.Q.L ~  year_factor*method_health_input+growth_B1G.Q.V + share_nmo_Q+working_age+gdp_percap+as.factor(health_sys), data = data)
 summary(model_3)
 
 
-model_4 = lm(growth_B1G.P.L ~  year_factor*method_edu_3+growth_B1G.P.V+share_nmo_P, data = data)
+model_4 = lm(growth_B1G.P.L ~  year_factor*method_edu_3+growth_B1G.P.V+share_nmo_P + working_age+gdp_percap +educ_share, data = data)
 summary(model_4)
 
 
-model_5 = lm(growth_B1G.L ~  as.factor(year_factor_rlv)*method_health_rlv+growth_B1G.V, data = data)
+model_5 = lm(growth_B1G.L ~  year_factor*method_health_rlv+growth_B1G.V+share_nmo_Q + working_age + gdp_percap + as.factor(health_sys), data = data)
 summary(model_5)
 
-model_6 = lm(growth_B1G.L ~  as.factor(year_factor_rlv)*method_edu_3+growth_B1G.V, data = data)
+model_6 = lm(growth_B1G.L ~  year_factor*method_edu_3+growth_B1G.V+share_nmo_P + working_age + gdp_percap + educ_share, data = data)
 summary(model_6)
 
 
 
 #Histograms
-
+library(scales)
 
 data_clean <- data %>%
-  filter(!is.na(growth_B1G.Q.L) & !is.na(method_health) & !is.na(year_factor))
+  filter(!is.na(method_health))
 
+#FIGURE 2
 
-# Create the histogram
+# Density plots
 p1 <- ggplot(data_clean, aes(x = growth_B1G.Q.L, color = method_health, fill = method_health)) +
   geom_density(alpha = 0.5) +
   facet_wrap(~ year_factor) +
   scale_y_continuous(labels = percent_format()) +
-  labs(x = "Growth B1G.Q,L",
+  labs(x = "Growth GVA Health",
        y = "Density") +
   theme_minimal()
 
@@ -833,97 +967,127 @@ library(scales)
 filtered_data <- data %>%
   filter(!is.na(growth_B1G.P.L) & !is.na(method_edu_3_rl) & !is.na(year_factor))
 
-# Create the histogram
-p1 <- ggplot(filtered_data, aes(x = growth_B1G.P.L, color = method_edu_3_rl, fill = method_edu_3_rl)) +
+filtered_data <- data %>%
+  filter(!is.na(growth_B1G.Q.L) & !is.na(method_health_rlv) & !is.na(year_factor))
+
+
+# Define the colors in the desired order
+my_colors <- c("#C77CFF", "#F8766D", "#00BFC4")
+
+# Update your ggplot code to use these colors
+##FIGURE 4
+
+p2 <- ggplot(filtered_data, aes(x = growth_B1G.P.L, color = method_edu_3, fill = method_edu_3)) +
   geom_density(alpha = 0.5) +
   facet_wrap(~ year_factor) +
-  scale_y_continuous(labels = percent_format()) +
-  labs(x = "Growth B1G.Q.L",
-       y = "Density") +
-  theme_minimal()
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(x = "Growth GVA Education",
+       y = "Density of Obs") +
+  theme_minimal() +
+  scale_color_manual(values = setNames(my_colors, unique(filtered_data$method_edu_3))) +
+  scale_fill_manual(values = setNames(my_colors, unique(filtered_data$method_edu_3)))
 
-p1 + guides(color = guide_legend(title = "Estimation Method - Education"),
+# Adjust the legend titles and transparency
+p2 + guides(color = guide_legend(title = "Estimation Method - Education"),
             fill = guide_legend(title = "Estimation Method - Education"),
             override.aes = list(fill = scales::alpha("white", 0.5))) 
 
-ggplot(filtered_data, aes(x = growth_B1G.P.L, color = method_edu_3, fill = method_edu_3)) +
+### density plots with adjusted axis
+
+# Calculate the maximum density for both datasets
+max_density_health <- max(ggplot_build(p1)$data[[1]]$density)
+max_density_edu <- max(ggplot_build(p2)$data[[1]]$density)
+
+# Set the maximum density across both plots
+max_density <- max(max_density_health, max_density_edu)
+
+# Adjust the y-axis for the first plot
+p1 <- ggplot(data_clean, aes(x = growth_B1G.Q.L, color = method_health, fill = method_health)) +
   geom_density(alpha = 0.5) +
   facet_wrap(~ year_factor) +
-  labs(title = "Density Plot of GVA Growth in Education by period and method of estimation",
-       x = "Growth GVA in Education",
-       y = "Density (%)") +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, max_density)) +
+  labs(x = "Growth GVA Health",
+       y = "Density") +
   theme_minimal() +
-  scale_y_continuous(limits = c(0, 1))
+  guides(color = guide_legend(title = "Estimation Method - Health"),
+         fill = guide_legend(title = "Estimation Method - Health"),
+         override.aes = list(fill = scales::alpha("white", 0.5)))
+
+# Adjust the y-axis for the second plot
+p2 <- ggplot(filtered_data, aes(x = growth_B1G.P.L, color = method_edu_3, fill = method_edu_3)) +
+  geom_density(alpha = 0.5) +
+  facet_wrap(~ year_factor) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, max_density)) +
+  labs(x = "Growth GVA Education",
+       y = "Density of Obs") +
+  theme_minimal() +
+  scale_color_manual(values = setNames(my_colors, unique(filtered_data$method_edu_3))) +
+  scale_fill_manual(values = setNames(my_colors, unique(filtered_data$method_edu_3))) +
+  guides(color = guide_legend(title = "Estimation Method - Education"),
+         fill = guide_legend(title = "Estimation Method - Education"),
+         override.aes = list(fill = scales::alpha("white", 0.5)))
+
+# Print the plots
+p1
+p2
+
 
 # Variance plots
 
-variance_data <- data %>%
+variance_data_health <- data %>%
   group_by(method_health, period) %>%
   summarise(across(starts_with("growth"), ~ var(.x, na.rm = TRUE), .names = "var_{col}"))
 
 
+variance_data_edu <- data %>%
+  group_by(method_edu_3_rl, period) %>%
+  summarise(across(starts_with("growth"), ~ var(.x, na.rm = TRUE), .names = "var_{col}"))
 
-variance_data_clean <- variance_data %>%
-  filter(!is.na(method_edu_3))
 
+
+variance_data_clean <- variance_data_edu %>%
+  filter(!is.na(method_edu_3_rl))
 
 variance_data_clean <- variance_data_clean %>%
   filter(!is.na(var_growth_B1G.P.L))
 
 
-variance_data_clean <- variance_data %>%
+variance_data_clean_H <- variance_data_health %>%
   filter(!is.na(var_growth_B1G.Q.L))
 
-variance_data_clean <- variance_data %>%
+variance_data_clean_H <- variance_data_clean_H %>%
   filter(!is.na(method_health))
 
-result <- variance_data_clean %>%
-  select(method_health_rlv, period, var_growth_B1G.Q.L) %>%
-  group_by(method_health_rlv, period) %>%
-  summarize(value = first(var_growth_B1G.Q.L), .groups = 'drop') %>%
-  pivot_wider(names_from = period, values_from = value)
+# Assuming `variance_data_clean` has the required structure
+#FIGURE 5
 
-
-result <- data %>%
-  select(method_health_rlv, period, growth_B1G.Q.L) %>%
-  group_by(method_health_rlv, period) %>%
-  summarize(value = first(growth_B1G.Q.L), .groups = 'drop') %>%
-  pivot_wider(names_from = period, values_from = value)
-
-result
-plot(result)
-
-variance_of_averages <- average_growth %>%
-  group_by(period) %>%
-  summarize(variance = var(avg_growth), .groups = 'drop')
-
-# Print the variance of averages table
-print(variance_of_averages)
-
-write_xlsx(result, "output_table_avg.xlsx")
-
-p <- (ggplot(variance_data_clean, aes(x = as.factor(period), y = var_growth_B1G.Q.L, color = method_health, group = method_health)) +
+p <- (ggplot(variance_data_clean_H, aes(x = as.factor(period), y = var_growth_B1G.Q.L, color = method_health, group = method_health)) +
         geom_line() +
         geom_point() +
         labs(x = "Period",
-             y = "Variance of GVA in Health")) +
-  theme_minimal()
+             y = "Variance of GVA in Health")) + 
+        theme_minimal()
+p + guides(color = guide_legend(title = "Estimation Method - Health")) +
+  coord_cartesian(ylim = c(0, 90)) +
+  theme(legend.position = "top",
+        axis.text.x = element_text(angle = 45, hjust = 1))
 
-p + guides(color = guide_legend(title = "Estimation method - Health"))
 
 
-# Calculate the average growth for each method and period
-average_growth <- data %>%
-  group_by(method_health_rlv, period) %>%
-  summarize(avg_growth = mean(growth_B1G.Q.L), .groups = 'drop')
+#FIGURE 6
 
-# Create the bar chart with average labels on top of each bar
-ggplot(data, aes(x = period, y = growth_B1G.Q.L, fill = method_health_rlv)) +
-  geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +
-  geom_text(data = average_growth, aes(x = period, y = avg_growth, label = round(avg_growth, 2)),
-            position = position_dodge(width = 0.9), vjust = -1, size = 3) +
-  labs(title = "Growth by Method and Period", x = "Period", y = "Growth", fill = "Method") +
-  theme_minimal()
+p <- (ggplot(variance_data_clean, aes(x = as.factor(period), y = var_growth_B1G.P.L, color = method_edu_3_rl, group = method_edu_3_rl)) +
+        geom_line() +
+        geom_point() +
+        labs(x = "Period",
+             y = "Variance of GVA in Education")) +
+  theme_minimal() +
+  scale_color_manual(values = setNames(my_colors, unique(variance_data_clean$method_edu_3_rl))) +
+  scale_fill_manual(values = setNames(my_colors, unique(variance_data_clean$method_edu_3_rl)))
+p + guides(color = guide_legend(title = "Estimation Method - Education")) +
+  coord_cartesian(ylim = c(0, 90)) +
+  theme(legend.position = "top",
+        axis.text.x = element_text(angle = 45, hjust = 1))
 
 
 #Boxplots for each estimation method
@@ -931,97 +1095,109 @@ ggplot(data, aes(x = period, y = growth_B1G.Q.L, fill = method_health_rlv)) +
 
 # Plot the boxplot with 'period' as x-axis
 # Define color palette
-color_palette <- c("1" = "#66C2A5", "2" = "#FC8D62", "3" = "#8DA0CB", "4" = "#E78AC3")
+#color_palette <- c("1" = "#66C2A5", "2" = "#FC8D62", "3" = "#8DA0CB", "4" = "#E78AC3")
 
 
-plot6 <- ggplot(data, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health))) +
-  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
-  theme_minimal() +
-  labs(x = "Period", y = "Growth GVA Health", title = "Boxplot of real growth of GVA Health  by Period and Method Health") +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(name = "Estimation method", labels = c("Deflation input prices", "Input indicators", "Deflation output prices", "Output indicators"), values = color_palette)
+#plot6 <- ggplot(data, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health))) +
+#  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
+#  theme_minimal() +
+#  labs(x = "Period", y = "Growth GVA Health", title = "Boxplot of real growth of GVA Health  by Period and Method Health") +
+#  theme(legend.position = "bottom") +
+#  scale_fill_manual(name = "Estimation method", labels = c("Deflation input prices", "Input indicators", "Deflation output prices", "Output indicators"), values = color_palette)
 
-plot7 <- ggplot(data, aes(x = factor(period), y = growth_B1G.P.L, fill = factor(method_edu_3))) +
-  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
-  theme_minimal() +
-  labs(x = "Period", y = "Growth GVA Education", title = "Boxplot of real growth of GVA Education by Period and Method Education") +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(name = "Estimation method", labels = c("Deflation input prices", "Input indicators", "Output indicators"))
-
-
-plot8 <- ggplot(data, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health_2))) +
-  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
-  theme_minimal() +
-  labs(x = "Period", y = "Growth GVA Health", title = "Boxplot of real growth of GVA Health by Period and Method Health") +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(name = "Estimation method", labels = c("Indirect (deflation)", "Direct (indicators)"), values = color_palette)
+# plot7 <- ggplot(data, aes(x = factor(period), y = growth_B1G.P.L, fill = factor(method_edu_3))) +
+#  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
+#  theme_minimal() +
+#  labs(x = "Period", y = "Growth GVA Education", title = "Boxplot of real growth of GVA Education by Period and Method Education") +
+#  theme(legend.position = "bottom") +
+#  scale_fill_manual(name = "Estimation method", labels = c("Deflation input prices", "Input indicators", "Output indicators"))
 
 
-plot9 <- ggplot(data, aes(x = period, y = growth_B1G.P.L, fill = factor(method_edu))) +
-  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
-  theme_minimal() +
-  labs(x = "Period", y = "Growth GVA Education", title = "Boxplot of real growth of GVA Education by Period and Method Education") +
-  theme(legend.position = "bottom") +
-  scale_fill_manual(name = "Estimation method", labels = c("Indirect (deflation)", "Direct (indicators)"), values = color_palette)
+#plot8 <- ggplot(data, aes(x = period, y = growth_B1G.Q.L, fill = factor(method_health_2))) +
+#  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
+#  theme_minimal() +
+#  labs(x = "Period", y = "Growth GVA Health", title = "Boxplot of real growth of GVA Health by Period and Method Health") +
+#  theme(legend.position = "bottom") +
+#  scale_fill_manual(name = "Estimation method", labels = c("Indirect (deflation)", "Direct (indicators)"), values = color_palette)
+
+
+#plot9 <- ggplot(data, aes(x = period, y = growth_B1G.P.L, fill = factor(method_edu))) +
+#  geom_boxplot(alpha = 1, position = position_dodge(width = 0.75)) +
+#  theme_minimal() +
+#  labs(x = "Period", y = "Growth GVA Education", title = "Boxplot of real growth of GVA Education by Period and Method Education") +
+#  theme(legend.position = "bottom") +
+#  scale_fill_manual(name = "Estimation method", labels = c("Indirect (deflation)", "Direct (indicators)"), values = color_palette)
 
 
 ###########
 #Diagnostic tests
 ###########
-ggplot(data = model_1, aes(x = model_1$residuals)) +
-  geom_histogram(fill = 'steelblue', color = 'black') +
-  labs(title = 'Histogram of Residuals: Model 1', x = 'Residuals', y = 'Frequency')
-
-bartlett.test()
-
-# Tukey test to study each pair of treatment :
-
-
-TukeyHSD(t_test_result)
-
-aov1 = aov(growth_B1G.Q.L ~ method_health, data=data)
-
-## Anova test
-
-anova1 = anova_test(growth_B1G.Q.L ~ method_health_rlv, data = data_historical)
-ssb <- anova1$`Sum Sq`[1]
-sst <- sum(anova1$`Sum Sq`)
-R2 <- ssb/sst
-
-anova1
+#ggplot(data = model_1, aes(x = model_1$residuals)) +
+#  geom_histogram(fill = 'steelblue', color = 'black') +
+#  labs(title = 'Histogram of Residuals: Model 1', x = 'Residuals', y = 'Frequency')
 
 
 ### Separating data into 2010-2019 
 
-data_historical <- data %>% 
+data_historical <- data2 %>% 
   filter(period >= 2010 & period <= 2019)
 
-leveneTest(growth_B1G.Q.L ~ interaction(period,method_health), data=data_2020)
-leveneTest(growth_B1G.Q.L ~ interaction(period,method_health), data=data)
+data_2020 <- data2 %>% 
+  filter(period >= 2010 & period <= 2021)
 
-#Isolating 2020
 
-data_2020 <- data %>% 
-  filter(period == 2020|period == 2021)
+
+
+
+
 
 
 #################################### THESE ARE THE ANOVA TO USE
 
-data_filtered <- data %>%
-  filter(!is.na(method_health_rlv), !is.na(period), !is.na(growth_B1G.Q.L), !is.na(year_factor), !is.na(share_nmo_Q), !is.na(growth_B1G.Q.V), !is.na(excess_mortality)) %>%
-  select(country, period, method_health_rlv, growth_B1G.Q.L, year_factor, share_nmo_Q, growth_B1G.Q.V, excess_mortality)
+library(rstatix)
 
 
-t_test_result <- anova_test(growth_B1G.Q.L ~ as.factor(method_health_input)+growth_B1G.Q.V, data = data_historical)
+#t_test_result <- anova_test(growth_B1G.Q.L ~ as.factor(method_health_input)+growth_B1G.Q.V, data = data_historical)
 
-t_test_result <- anova_test(growth_B1G.Q.L ~ period*method_health_rlv+growth_B1G.Q.V + share_nmo_Q, data = data_historical)
-t_test_result <- anova_test(growth_B1G.Q.L ~ year_factor*method_health_rlv+growth_B1G.Q.V + share_nmo_Q, data = data)
+#t_test_result <- anova_test(growth_B1G.Q.L ~ period*method_health_rlv+growth_B1G.Q.V + share_nmo_Q, data = data_historical)
+#t_test_result <- anova_test(growth_B1G.Q.L ~ period*method_health_rlv+growth_B1G.Q.V + share_nmo_Q + working_age + gdp_percap, data = data_historical)
+health_complete <- anova_test(growth_B1G.Q.L ~ year_factor*method_health_rlv+growth_B1G.Q.V + share_nmo_Q + working_age + gdp_percap + as.factor(health_sys), data = data)
+health_covid <- anova_test(growth_B1G.Q.L ~ year_factor*method_health_rlv+growth_B1G.Q.V + share_nmo_Q + working_age + gdp_percap + as.factor(health_sys), data = data_2020)
+health_baseline <- anova_test(growth_B1G.Q.L ~ period*method_health+growth_B1G.Q.V + share_nmo_Q + working_age + gdp_percap, data = data_historical)
+
 
 
 t_test_result <- anova_test(growth_B1G.P.L ~ period*method_edu_3+growth_B1G.P.V + share_nmo_P, data = data_historical)
-t_test_result <- anova_test(growth_B1G.P.L ~ year_factor*method_edu_3+growth_B1G.P.V + share_nmo_P, data = data)
+t_test_result
+t_test_result <- anova_test(growth_B1G.P.L ~ period*method_edu_3+growth_B1G.P.V + share_nmo_P, data = filtered_data)
+t_test_result
+
+edu_complete <-anova_test(growth_B1G.P.L ~ period*method_edu_3_rl+growth_B1G.P.V + share_nmo_P + working_age + gdp_percap + educ_share, data = data_2020)
+edu_baseline <-anova_test(growth_B1G.P.L ~ period*method_edu_3_rl+growth_B1G.P.V + share_nmo_P + working_age + gdp_percap + educ_share, data = data_historical)
+
+library(openxlsx)
+
+# Create a new workbook
+wb <- createWorkbook()
+
+# Add sheets and write data to them
+addWorksheet(wb, "ANOVA Table 1")
+writeData(wb, "ANOVA Table 1", health_complete)
+
+addWorksheet(wb, "ANOVA Table 2")
+writeData(wb, "ANOVA Table 2", health_baseline)
+
+# Add sheets and write data to them
+addWorksheet(wb, "ANOVA Table 3")
+writeData(wb, "ANOVA Table 3", edu_complete)
+
+addWorksheet(wb, "ANOVA Table 4")
+writeData(wb, "ANOVA Table 4", edu_baseline)
 
 
+
+# Save the workbook
+saveWorkbook(wb, "anova_tables_15jan25.xlsx", overwrite = TRUE)
 
 #######################################################
 
@@ -1030,9 +1206,33 @@ t_test_result <- anova_test(growth_B1G.P.L ~ year_factor*method_edu_3+growth_B1G
 #########
 #Descriptive statistics
 library(vtable)
-sumtable(data,
+
+data_summary = filter(data2)
+sumtable(data_summary,
          out="csv",
-         file="file.csv")
+         file="summary_stats.csv")
+
+
+##################
+# extract
+##################
+
+library(jtools)
+export_summs(model_1, model_2, model_3, scale = F, 
+             error_format = "[{conf.low}, {conf.high}]", 
+             to.file = "docx", file.name = "results_models1-3_new.docx")
+
+library(jtools)
+export_summs(model_4, model_5, model_6, scale = FALSE, 
+             error_format = "[{conf.low}, {conf.high}]", 
+             to.file = "docx", file.name = "results_models4-6_new.docx")
+
+
+library(jtools)
+export_summs(model_1, model_4, scale = FALSE, 
+             error_format = "[{conf.low}, {conf.high}]", 
+             to.file = "docx", file.name = "results_models1-4.docx")
+
 
 
 
@@ -1044,27 +1244,106 @@ library(dpylr)
 
 
 # Filter out NA values and select relevant columns
-data_filtered <- data %>%
-  filter(!is.na(method_health_rlv), !is.na(growth_B1G.Q.L), !is.na(year_factor), !is.na(share_nmo_Q), !is.na(growth_B1G.Q.V), !is.na(excess_mortality)) %>%
-  select(method_health_rlv, growth_B1G.Q.L, year_factor, share_nmo_Q, growth_B1G.Q.V, excess_mortality)
 
 
-model_1 = lm(growth_B1G.Q.L ~  year_factor*method_health_rlv+growth_B1G.Q.V + share_nmo_Q, data = data_filtered)
+
+model_1 = lm(growth_B1G.Q.L ~  year_factor*method_health_rlv+growth_B1G.Q.V + share_nmo_Q+working_age+gdp_percap+health_sys, data = data)
 summary(model_1)
+
+model_4 = lm(growth_B1G.P.L ~  year_factor*method_edu_3+growth_B1G.P.V+share_nmo_P + working_age+gdp_percap +educ_share, data = data)
+summary(model_4)
+
+
+model_5 = lm(growth_B1G.L ~  year_factor*method_health_rlv+growth_B1G.V+share_nmo_Q + working_age + gdp_percap + as.factor(health_sys), data = data)
+summary(model_5)
+
+model_6 = lm(growth_B1G.L ~  year_factor*method_edu_3+growth_B1G.V+share_nmo_P + working_age + gdp_percap + educ_share, data = data)
+summary(model_6)
+
 # Calculate weights based on the standard deviation of growth_B1G.Q.L
 # Replicate the weight for each row in data_filtered
-wt <- 1 / lm(abs(model_1$residuals) ~ model_1$fitted.values)$fitted.values^2
-
-model_wt = lm(growth_B1G.Q.L ~  year_factor*method_health_rlv+growth_B1G.Q.V + share_nmo_Q + excess_mortality, data = data_filtered, weights = wt)
 
 
-export_summs(model_1, model_wt, scale = TRUE, 
-             error_format = "[{conf.low}, {conf.high}]", 
-             to.file = "docx", file.name = "reg4.docx")
+###model wt for education as well. 
+# Extract the data used in model_1
+model_data <- model.frame(model_1)
 
-# Display summary of the model
+# Calculate the absolute residuals and fitted values
+abs_resid <- abs(model_1$residuals)
+fitted_vals <- model_1$fitted.values
+
+# Fit a model to estimate the variance function
+variance_model <- lm(abs_resid ~ fitted_vals)
+
+# Compute the weights
+wt <- 1 / (variance_model$fitted.values^2)
+
+# Fit the weighted regression model using model_data and wt
+model_wt <- lm(growth_B1G.Q.L ~ year_factor * method_health_rlv + 
+                 growth_B1G.Q.V + share_nmo_Q + working_age + gdp_percap + health_sys, 
+               data = model_data, weights = wt)
 summary(model_wt)
-summary(model_1)
+
+model_data4 <- model.frame(model_4)
+
+# Calculate the absolute residuals and fitted values
+abs_resid <- abs(model_4$residuals)
+fitted_vals <- model_4$fitted.values
+
+# Fit a model to estimate the variance function
+variance_model <- lm(abs_resid ~ fitted_vals)
+
+# Compute the weights
+wt4 <- 1 / (variance_model$fitted.values^2)
+
+# Fit the weighted regression model using model_data and wt
+model_wt4 <- lm(growth_B1G.P.L ~  year_factor*method_edu_3+growth_B1G.P.V+share_nmo_P + working_age+gdp_percap +educ_share, 
+               data = model_data4, weights = wt4)
 
 
-write_xlsx(data, "data.xlsx")
+library(jtools)
+
+jtools::summ(model_wt, scale = F, confint = TRUE, digits = 2)
+export_summs(model_1, model_wt, model_4, model_wt4, scale = FALSE, 
+             error_format = "[{conf.low}, {conf.high}]", 
+             to.file = "docx", file.name = "results_jan_weightedreg.docx")
+
+#### How to see included countries
+
+included_countries <- unique(data$country[rownames(data) %in% rownames(model_1$model)])
+print(included_countries)
+
+detach("package:rstatix", unload=TRUE)
+
+
+# Extract the countries included in the analysis
+included_countries <- unique(included_data$country)
+
+# View the included countries
+print(included_countries)
+
+
+
+
+#####
+#Regression plots
+library(jtools)
+library(ggplot2)
+library(gridExtra)
+plot_1 <- plot_coefs(model_1) +
+  ggtitle("Model 1")
+
+plot_2 <- plot_coefs(model_2) +
+  ggtitle("Model 2")
+
+plot_3 <- plot_coefs(model_3) +
+  ggtitle("Model 3")
+
+# Combine the plots into a single screen
+grid.arrange(plot_1, plot_2, plot_3, ncol = 1)
+
+
+
+
+summ(model_1, confint = TRUE, digits=3)
+summ(model_2, confint = TRUE, digits=3)
